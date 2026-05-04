@@ -80,11 +80,6 @@ Widget optifilaLogo({double size=32}) => Container(
   padding: const EdgeInsets.symmetric(horizontal:14, vertical:10),
   decoration: BoxDecoration(color:Colors.white, borderRadius:BorderRadius.circular(10)),
   child: Row(mainAxisSize:MainAxisSize.min, children:[
-    /*Container(
-      width:size+4, height:size+4,
-      decoration: BoxDecoration(color:AppTheme.accentOrange, borderRadius:BorderRadius.circular(8)),
-      child: Icon(Icons.calendar_month_rounded, color:Colors.white, size:size*0.7),
-    ),*/
     SizedBox(
       width: 60,
       height: 40,
