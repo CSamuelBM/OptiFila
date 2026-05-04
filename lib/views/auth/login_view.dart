@@ -75,10 +75,13 @@ class _LoginViewState extends State<LoginView> {
           const SizedBox(height:16),
           Center(child:Row(mainAxisAlignment:MainAxisAlignment.center,children:[
             const Text('¿No tienes cuenta? ',style:TextStyle(color:AppTheme.textSecondary,fontSize:13)),
-            GestureDetector(
-              onTap:()=>Navigator.pushNamed(context,'/register-type'),
-              child:const Text('Regístrate',style:TextStyle(color:AppTheme.accentOrange,fontWeight:FontWeight.w600,fontSize:13)),
-            ),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: InkWell(
+                onTap: () => Navigator.pushNamed(context, '/register-type'),
+                child:const Text('Regístrate',style:TextStyle(color:AppTheme.accentOrange,fontWeight:FontWeight.w600,fontSize:13)),
+              ),
+            )
           ])),
           const SizedBox(height:14),
           Container(
