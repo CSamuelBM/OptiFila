@@ -1,36 +1,4 @@
-enum TurnStatus {
-  active, completed, cancelled;
-
-  static TurnStatus fromBackend(String value){
-    switch(value){
-      case 'active':
-        return TurnStatus.active;
-      case 'completed':
-        return TurnStatus.completed;
-      case 'cancelled':
-        return TurnStatus.cancelled;
-      default:
-        return TurnStatus.active;
-    }
-  }
-
-  // Texto para la UI (NO backend)
-  String toSpanish(){
-    switch(this){
-      case TurnStatus.active:
-        return 'Activo';
-      case TurnStatus.completed:
-        return 'Completado';
-      case TurnStatus.cancelled:
-        return 'Cancelado';
-    }
-  }
-
-  // Enviar status al backend
-  String toBackend(){
-    return name;
-  }
-}
+import '../enum/turn_status_enum.dart';
 
 class TurnModel {
   final String     id;

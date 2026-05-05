@@ -1,49 +1,134 @@
 import 'package:flutter/material.dart';
+import '../models/client_model.dart';
+import '../models/login_result.dart';
 import '../models/user_model.dart';
+import '../repositories/auth_repository_impl.dart';
+import '../requests/client_request.dart';
+import '../requests/user_request.dart';
 
 class AuthController extends ChangeNotifier {
-  UserModel? _user;
-  bool       _isBusiness = false;
-  bool       _loading    = false;
-  String?    _error;
+  final AuthRepositoryImpl _authRepository = AuthRepositoryImpl();
 
-  UserModel? get user        => _user;
-  bool       get isBusiness  => _isBusiness;
-  bool       get isLoading   => _loading;
-  String?    get error       => _error;
+  ClientModel? _client;
+  UserModel? _service;
 
+  bool _isService = false;
+  bool _loading = false;
+  String? _error;
+
+  /// ─── GETTERS ──────────────────────────────────────────
+  ClientModel? get client => _client;
+  UserModel? get service => _service;
+  bool get isService => _isService;
+  bool get isLoading => _loading;
+  String? get error => _error;
+
+  /// ─── LOGIN ────────────────────────────────────────────
   Future<bool> login(String email, String password) async {
-    _loading = true; _error = null; notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 700));
+    _loading = true;
+    _error = null;
+    notifyListeners();
 
-    if (email.isEmpty || password.isEmpty) {
-      _error = 'Completa todos los campos'; _loading = false; notifyListeners(); return false;
+    try {
+      final LoginResult result =
+      await _authRepository.login(email, password);
+
+      _isService = result.role == 'SERVICE';
+
+      if (_isService) {
+        _service = result.service;
+        _client = null;
+      } else {
+        _client = result.client;
+        _service = null;
+      }
+
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return false;
     }
-    _isBusiness = email == 'negocio@email.com';
-    _user = _isBusiness
-      ? const UserModel(id: '1', name: 'Mi Negocio',  email: 'negocio@email.com', phone: '+1 234 567 8900', location: 'Ciudad, País')
-      : const UserModel(id: '2', name: 'Usuario',      email: 'usuario@email.com',  phone: '+1 234 567 8900', location: 'Ciudad, País', totalTurnos: 24, activeTurnos: 1, favorites: 5);
-    _loading = false; notifyListeners(); return true;
   }
 
-  Future<bool> registerBusiness({
-    required String name, required String email,
-    required String password, required String businessName, required String category,
+  /// ─── SIGNUP CLIENTE ───────────────────────────────────
+  Future<bool> registerClient({
+    required String firstName,
+    required String lastName,
+    required String secondLastName,
+    required String email,
+    required String password,
   }) async {
-    _loading = true; notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 700));
-    _isBusiness = true;
-    _user = UserModel(id: DateTime.now().millisecondsSinceEpoch.toString(), name: name, email: email);
-    _loading = false; notifyListeners(); return true;
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final request = ClientRequest(
+        firstName: firstName,
+        lastName: lastName,
+        secondLastName: secondLastName,
+        email: email,
+        password: password,
+      );
+
+      _client = await _authRepository.signupClient(request);
+      _service = null;
+      _isService = false;
+
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
-  Future<bool> registerClient({required String name, required String email, required String password}) async {
-    _loading = true; notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 700));
-    _isBusiness = false;
-    _user = UserModel(id: DateTime.now().millisecondsSinceEpoch.toString(), name: name, email: email);
-    _loading = false; notifyListeners(); return true;
+  /// ─── SIGNUP SERVICIO ──────────────────────────────────
+  Future<bool> registerService({
+    required String serviceName,
+    required String email,
+    required String password,
+    required String categoryId,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final request = UserRequest(
+        serviceName: serviceName,
+        email: email,
+        password: password,
+        categoryId: categoryId,
+      );
+
+      _service = await _authRepository.signupService(request);
+      _client = null;
+      _isService = true;
+
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
-  void logout() { _user = null; _isBusiness = false; notifyListeners(); }
+  /// ─── LOGOUT ───────────────────────────────────────────
+  void logout() {
+    _client = null;
+    _service = null;
+    _isService = false;
+    notifyListeners();
+  }
 }

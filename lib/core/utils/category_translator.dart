@@ -1,0 +1,17 @@
+const Map<String, String> categoryES = {
+  'General Inquiries': 'Consultas generales',
+  'Technical Support': 'Soporte técnico',
+  'Billing & Payments': 'Facturación y pagos',
+  'Human Resources': 'Recursos Humanos',
+  'Sales & Marketing': 'Ventas y marketing',
+  'Customer Success': 'Éxito del cliente',
+  'Legal Services': 'Servicios legales',
+  'Financial Advisory': 'Asesoría financiera',
+  'Logistics & Shipping': 'Logística y envíos',
+  'Healthcare Support': 'Soporte de salud',
+  'Education & Training': 'Educación y capacitación',
+  'Maintenance & Repairs': 'Mantenimiento y reparaciones',
+  'IT Infrastructure': 'Infraestructura TI',
+  'Public Relations': 'Relaciones públicas',
+  'Research & Development': 'Investigación y desarrollo',
+};
