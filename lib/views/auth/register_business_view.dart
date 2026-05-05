@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
+import '../../models/category_model.dart';
+import '../../repositories/category_repository.dart';
 import '../widgets/common_widgets.dart';
 
 class RegisterBusinessView extends StatefulWidget {
@@ -8,29 +10,70 @@ class RegisterBusinessView extends StatefulWidget {
   @override State<RegisterBusinessView> createState() => _State();
 }
 class _State extends State<RegisterBusinessView> {
-  final _name     = TextEditingController();
-  final _email    = TextEditingController();
-  final _password = TextEditingController();
-  final _bName    = TextEditingController();
-  bool _obscure   = true;
-  bool _loading   = false;
-  String? _category;
+  final   _name     = TextEditingController();
+  final   _email    = TextEditingController();
+  final   _password = TextEditingController();
+  final   _bName    = TextEditingController();
+  bool    _obscure   = true;
+  bool    _loading   = false;
+  final   _category = CategoryRepository();
 
-  static const _categories = ['Restaurante','Belleza','Banco','Médico','Retail','Otro'];
+  List<CategoryModel> _categories = [];
+  CategoryModel?      _selectedCategory;
 
   Future<void> _submit() async {
-    if (_name.text.isEmpty||_email.text.isEmpty||_password.text.isEmpty||_bName.text.isEmpty||_category==null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Completa todos los campos'),backgroundColor:AppTheme.errorRed));
+    if (_email.text.isEmpty ||
+        _password.text.isEmpty ||
+        _bName.text.isEmpty ||
+        _selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Completa todos los campos'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
       return;
     }
-    setState(()=>_loading=true);
-    final ok = await AppControllers.auth.registerBusiness(
-      name:_name.text.trim(), email:_email.text.trim(),
-      password:_password.text, businessName:_bName.text.trim(), category:_category!);
+
+    setState(() => _loading = true);
+
+    final ok = await AppControllers.auth.registerService(
+      serviceName: _bName.text.trim(),
+      email: _email.text.trim(),
+      password: _password.text,
+      categoryId: _selectedCategory!.id, // luego será ID real
+    );
+
     if (!mounted) return;
-    setState(()=>_loading=false);
-    if (ok) Navigator.pushReplacementNamed(context,'/business');
+    setState(() => _loading = false);
+
+    if (ok) {
+      Navigator.pushReplacementNamed(context, '/business');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppControllers.auth.error ?? 'Error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
+    }
   }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final data = await _category.getCategories();
+      setState(() => _categories = data);
+    } catch (e) {
+      // mostrar error
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -73,15 +116,34 @@ class _State extends State<RegisterBusinessView> {
           const SizedBox(height:14),
           _label('Categoría'),
           Container(
-            width:double.infinity,
-            padding:const EdgeInsets.symmetric(horizontal:14),
-            decoration:BoxDecoration(color:const Color(0xFFF3F4F6),borderRadius:BorderRadius.circular(12)),
-            child:DropdownButtonHideUnderline(child:DropdownButton<String>(
-              value:_category,
-              hint:const Text('Selecciona una categoría',style:TextStyle(color:Color(0xFFBDC3CB),fontSize:14)),
-              items:_categories.map((c)=>DropdownMenuItem(value:c,child:Text(c))).toList(),
-              onChanged:(v)=>setState(()=>_category=v),
-            )),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<CategoryModel>(
+                value: _selectedCategory,
+                isExpanded: true,
+                hint: const Text(
+                  'Selecciona una categoría',
+                  style: TextStyle(
+                    color: Color(0xFFBDC3CB),
+                    fontSize: 14,
+                  ),
+                ),
+                items: _categories.map((c) {
+                  return DropdownMenuItem<CategoryModel>(
+                    value: c,
+                    child: Text(c.displayName),
+                  );
+                }).toList(),
+                onChanged: _categories.isEmpty
+                    ? null
+                    : (v) => setState(() => _selectedCategory = v),
+              ),
+            ),
           ),
           const SizedBox(height:28),
           PrimaryButton(label:'Crear Cuenta', onPressed:_submit, isLoading:_loading),

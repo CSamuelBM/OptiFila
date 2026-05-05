@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
+import '../../enum/turn_status_enum.dart';
 import '../../models/turn_model.dart';
 
 class MisTurnosTab extends StatefulWidget {
@@ -101,16 +102,20 @@ class _TurnCard extends StatelessWidget {
 
   Color get _numColor {
     switch(turn.status){
-      case TurnStatus.active:    return AppTheme.accentOrange;
+      case TurnStatus.waiting:    return AppTheme.accentOrange;
+      case TurnStatus.inProgress: return AppTheme.successGreen;
       case TurnStatus.completed: return AppTheme.textSecondary;
-      case TurnStatus.cancelled: return AppTheme.errorRed;
+      case TurnStatus.canceled: return AppTheme.errorRed;
+      case TurnStatus.missed: return AppTheme.errorRed.withOpacity(0.4);
     }
   }
   Color get _borderColor {
     switch(turn.status){
-      case TurnStatus.active:    return AppTheme.successGreen;
+      case TurnStatus.waiting:    return AppTheme.successGreen;
+      case TurnStatus.inProgress: return AppTheme.accentOrange;
       case TurnStatus.completed: return AppTheme.borderColor;
-      case TurnStatus.cancelled: return AppTheme.errorRed.withOpacity(0.4);
+      case TurnStatus.canceled: return AppTheme.bgGray;
+      case TurnStatus.missed: return AppTheme.errorRed.withOpacity(0.4);
     }
   }
 
@@ -147,7 +152,7 @@ class _TurnCard extends StatelessWidget {
         Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
             Expanded(child:Text(turn.businessName,style:const TextStyle(fontSize:14,fontWeight:FontWeight.bold,color:AppTheme.textPrimary),overflow:TextOverflow.ellipsis)),
-            if(turn.status==TurnStatus.active)
+            if(turn.status==TurnStatus.inProgress)
               Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:3),
                 decoration:BoxDecoration(color:const Color(0xFFE8F5E9),borderRadius:BorderRadius.circular(8)),
                 child:const Text('Activo',style:TextStyle(fontSize:11,color:AppTheme.successGreen,fontWeight:FontWeight.w600)))
@@ -167,7 +172,7 @@ class _TurnCard extends StatelessWidget {
             const Icon(Icons.access_time_outlined,size:13,color:AppTheme.textSecondary),
             const SizedBox(width:3),
             Text(_formatDate(turn.dateTime),style:const TextStyle(fontSize:12,color:AppTheme.textSecondary)),
-            if(turn.status==TurnStatus.active&&turn.waitMinutes!=null)...[
+            if(turn.status==TurnStatus.inProgress&&turn.waitMinutes!=null)...[
               const SizedBox(width:8),
               Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:2),
                 decoration:BoxDecoration(color:AppTheme.orangePale,borderRadius:BorderRadius.circular(8),border:Border.all(color:AppTheme.accentOrange,width:0.5)),
