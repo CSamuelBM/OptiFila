@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
 import '../../models/business_model.dart';
+import '../business/business_detail_view.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -32,7 +33,7 @@ class _State extends State<HomeTab> {
             GestureDetector(
               onTap:(){ AppControllers.auth.logout(); Navigator.pushReplacementNamed(context,'/login'); },
               child:Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:Colors.white24,borderRadius:BorderRadius.circular(20)),
-                child:const Icon(Icons.logout,color:Colors.white,size:18)),
+                  child:const Icon(Icons.logout,color:Colors.white,size:18)),
             ),
           ]),
         ),
@@ -87,7 +88,12 @@ class _State extends State<HomeTab> {
             const Icon(Icons.location_on_outlined,size:18,color:AppTheme.textSecondary),
           ]),
           const SizedBox(height:12),
-          ...businesses.map((b)=>_BusinessCard(business:b)),
+          ...businesses.map((b) => GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BusinessDetailView(business: b),
+            )),
+            child: _BusinessCard(business: b),
+          )),
         ])),
       ]);
     });
@@ -120,7 +126,7 @@ class _BusinessCard extends StatelessWidget {
       // Logo placeholder
       Stack(children:[
         Container(width:50,height:50,decoration:BoxDecoration(color:_catColor.withOpacity(0.15),borderRadius:BorderRadius.circular(12)),
-          child:Center(child:Container(width:24,height:24,decoration:BoxDecoration(color:_catColor,shape:BoxShape.circle)))),
+            child:Center(child:Container(width:24,height:24,decoration:BoxDecoration(color:_catColor,shape:BoxShape.circle)))),
         if(business.isOpen) Positioned(top:0,right:0,child:Container(width:10,height:10,decoration:BoxDecoration(color:AppTheme.successGreen,shape:BoxShape.circle,border:Border.all(color:Colors.white,width:1.5)))),
       ]),
       const SizedBox(width:14),
