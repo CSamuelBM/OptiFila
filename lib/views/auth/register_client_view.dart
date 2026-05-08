@@ -1,142 +1,95 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
-import '../widgets/common_widgets.dart';
 
 class RegisterClientView extends StatefulWidget {
   const RegisterClientView({super.key});
-  @override State<RegisterClientView> createState() => _State();
+  @override State<RegisterClientView> createState() => _S();
 }
-class _State extends State<RegisterClientView> {
-  final _firstName      = TextEditingController();
-  final _lastName       = TextEditingController();
-  final _secondLastName = TextEditingController();
-  final _email          = TextEditingController();
-  final _password       = TextEditingController();
-  bool _obscure=true; bool _loading=false;
+class _S extends State<RegisterClientView> {
+  final _nombre  = TextEditingController();
+  final _apPat   = TextEditingController();
+  final _apMat   = TextEditingController();
+  final _email   = TextEditingController();
+  final _pass    = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _o1 = true, _o2 = true, _loading = false;
+
+  @override void dispose() {
+    for (final c in [_nombre,_apPat,_apMat,_email,_pass,_confirm]) c.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
-    if (_firstName.text.isEmpty ||
-        _lastName.text.isEmpty ||
-        _email.text.isEmpty ||
-        _password.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Completa todos los campos obligatorios'),
-          backgroundColor: AppTheme.errorRed,
-        ),
-      );
-      return;
+    if ([_nombre,_apPat,_apMat,_email,_pass,_confirm].any((c)=>c.text.trim().isEmpty)) {
+      _snack('Completa todos los campos'); return;
     }
-
-    setState(() => _loading = true);
-
+    if (_pass.text != _confirm.text) { _snack('Las contraseñas no coinciden'); return; }
+    setState(()=>_loading=true);
     final ok = await AppControllers.auth.registerClient(
-      firstName: _firstName.text.trim(),
-      lastName: _lastName.text.trim(),
-      secondLastName: _secondLastName.text.trim(),
-      email: _email.text.trim(),
-      password: _password.text,
-    );
-
+      name: '\${_nombre.text.trim()} \${_apPat.text.trim()} \${_apMat.text.trim()}',
+      email: _email.text.trim(), password: _pass.text, firstName: '', lastName: '', secondLastName: '');
     if (!mounted) return;
-    setState(() => _loading = false);
-
-    if (ok) {
-      Navigator.pushReplacementNamed(context, '/client');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppControllers.auth.error ?? 'Error al registrar'),
-          backgroundColor: AppTheme.errorRed,
-        ),
-      );
-    }
+    setState(()=>_loading=false);
+    if (ok) Navigator.pushReplacementNamed(context, '/client');
   }
+
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(m), backgroundColor: AppTheme.errorRed));
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor:AppTheme.headerTeal,
-    body:SafeArea(child:Column(children:[
-      Padding(padding:const EdgeInsets.fromLTRB(16,16,16,0),child:Align(alignment:Alignment.centerLeft,
-        child:GestureDetector(onTap:()=>Navigator.pop(context),
-          child:const Row(mainAxisSize:MainAxisSize.min,children:[
-            Icon(Icons.arrow_back_ios,size:16,color:Colors.white),Text('Volver',style:TextStyle(color:Colors.white,fontSize:14))])))),
-      const SizedBox(height:16),
-      const Text('Registro de Cliente',style:TextStyle(fontSize:22,fontWeight:FontWeight.bold,color:Colors.white)),
-      const Text('Completa tus datos',style:TextStyle(fontSize:13,color:Colors.white70)),
-      const SizedBox(height:20),
-      Expanded(child:Container(
-        padding:const EdgeInsets.all(24),
-        decoration:const BoxDecoration(color:Colors.white,borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
-        child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const SizedBox(height:8),
-          _label('Nombre'),
-          TextField(
-            controller: _firstName,
-            decoration: const InputDecoration(hintText: 'Juan'),
-          ),
-
-          const SizedBox(height: 14),
-
-          _label('Apellido paterno'),
-          TextField(
-            controller: _lastName,
-            decoration: const InputDecoration(hintText: 'Pérez'),
-          ),
-
-          const SizedBox(height: 14),
-
-          _label('Apellido materno (opcional)'),
-          TextField(
-            controller: _secondLastName,
-            decoration: const InputDecoration(hintText: 'López'),
-          ),
-
-          const SizedBox(height: 14),
-
-          _label('Email'),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(hintText: 'tu@email.com'),
-          ),
-
-          const SizedBox(height: 14),
-
-          _label('Contraseña'),
-          TextField(
-            controller: _password,
-            obscureText: _obscure,
-            decoration: InputDecoration(
-              hintText: '••••••••',
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 20,
-                  color: AppTheme.textLight,
-                ),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
-            ),
-          ),
-          PrimaryButton(label:'Crear Cuenta',onPressed:_submit,isLoading:_loading),
-          const SizedBox(height:16),
+    backgroundColor: AppTheme.headerColor,
+    body: SafeArea(child: Column(children: [
+      _header(context, 'Registro de Cliente', 'Completa tus datos'),
+      Expanded(child: Container(
+        decoration: const BoxDecoration(color: AppTheme.bgGray, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const SizedBox(height: 4),
+          _f('Nombre',           _nombre, 'Juan'),
+          _f('Apellido Paterno', _apPat,  'Pérez'),
+          _f('Apellido Materno', _apMat,  'García'),
+          _f('Email',            _email,  'tu@email.com', type: TextInputType.emailAddress),
+          _pf('Contraseña',          _pass,   _o1, ()=>setState(()=>_o1=!_o1)),
+          _pf('Confirmar Contraseña',_confirm,_o2, ()=>setState(()=>_o2=!_o2)),
+          const SizedBox(height: 24),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            child: _loading ? const SizedBox(width:20,height:20,child:CircularProgressIndicator(color:Colors.white,strokeWidth:2))
+              : const Text('Crear Cuenta'))),
+          const SizedBox(height: 16),
         ])),
       )),
     ])),
   );
-  Widget _label(String t)=>Padding(padding:const EdgeInsets.only(bottom:8),child:Text(t,style:const TextStyle(fontWeight:FontWeight.w500,color:AppTheme.textPrimary,fontSize:14)));
-  @override
-  void dispose() {
-    _firstName.dispose();
-    _lastName.dispose();
-    _secondLastName.dispose();
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
-  }
 
+  Widget _f(String label, TextEditingController c, String hint, {TextInputType type=TextInputType.text}) =>
+    Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(label,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600,color:AppTheme.textPrimary)),
+      const SizedBox(height:6),
+      TextField(controller:c,keyboardType:type,decoration:InputDecoration(hintText:hint)),
+      const SizedBox(height:14),
+    ]);
+
+  Widget _pf(String label, TextEditingController c, bool obs, VoidCallback toggle) =>
+    Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(label,style:const TextStyle(fontSize:13,fontWeight:FontWeight.w600,color:AppTheme.textPrimary)),
+      const SizedBox(height:6),
+      TextField(controller:c,obscureText:obs,decoration:InputDecoration(hintText:'••••••••',
+        suffixIcon:IconButton(icon:Icon(obs?Icons.visibility_off_outlined:Icons.visibility_outlined,size:20,color:AppTheme.textLight),onPressed:toggle))),
+      const SizedBox(height:14),
+    ]);
 }
+
+Widget _header(BuildContext context, String title, String sub) => Padding(
+  padding: const EdgeInsets.fromLTRB(16,12,16,20),
+  child: Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+    GestureDetector(onTap:()=>Navigator.pop(context),
+      child:const Row(mainAxisSize:MainAxisSize.min,children:[
+        Icon(Icons.arrow_back_ios,size:16,color:Colors.white),
+        Text('Volver',style:TextStyle(color:Colors.white,fontSize:14))])),
+    const SizedBox(height:16),
+    Center(child:Text(title,style:const TextStyle(fontSize:22,fontWeight:FontWeight.bold,color:Colors.white))),
+    Center(child:Text(sub,style:const TextStyle(fontSize:13,color:Colors.white70))),
+  ]),
+);

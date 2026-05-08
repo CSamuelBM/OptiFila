@@ -23,6 +23,8 @@ class AuthController extends ChangeNotifier {
   bool get isLoading => _loading;
   String? get error => _error;
 
+  Object? get user => null;
+
   /// ─── LOGIN ────────────────────────────────────────────
   Future<bool> login(String email, String password) async {
     _loading = true;
@@ -60,7 +62,7 @@ class AuthController extends ChangeNotifier {
     required String lastName,
     required String secondLastName,
     required String email,
-    required String password,
+    required String password, required String name,
   }) async {
     _loading = true;
     _error = null;
@@ -131,4 +133,6 @@ class AuthController extends ChangeNotifier {
     _isService = false;
     notifyListeners();
   }
+
+  Future<Object?> registerBusiness({required String name, required String email, required String password, required String businessName, required String category}) async {}
 }

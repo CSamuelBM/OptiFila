@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import 'inicio_tab.dart';
 import 'clientes_tab.dart';
-import 'config_tab.dart';
+import '../client/config_tab.dart';
 
 class BusinessShell extends StatefulWidget {
   const BusinessShell({super.key});

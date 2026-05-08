@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import 'home_tab.dart';
 import 'mis_turnos_tab.dart';
-import 'perfil_tab.dart';
+import '../auth/perfil_tab.dart';
 
 class ClientShell extends StatefulWidget {
   const ClientShell({super.key});
