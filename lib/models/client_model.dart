@@ -1,4 +1,3 @@
-import 'dart:math';
 
 class ClientModel {
   final String   id;

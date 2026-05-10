@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'package:http/http.dart' as http;
 import '../models/client_model.dart';
 import '../models/login_result.dart';
@@ -33,8 +34,8 @@ class AuthRepositoryImpl {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(request.toJson()),
     );
-
-    if (response.statusCode != 200) {
+    final success = jsonDecode(response.body)['success'];
+    if (!success) {
       throw Exception('Error al registrar negocio');
     }
 
@@ -53,7 +54,9 @@ class AuthRepositoryImpl {
       }),
     );
 
-    if (response.statusCode != 200) {
+    final success = jsonDecode(response.body)['success'];
+
+    if (!success) {
       throw Exception('Credenciales incorrectas');
     }
 
