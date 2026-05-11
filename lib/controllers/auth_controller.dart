@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/di/injection_dart.dart';
 import '../models/client_model.dart';
 import '../models/login_result.dart';
 import '../models/user_model.dart';
@@ -7,7 +8,7 @@ import '../requests/client_request.dart';
 import '../requests/user_request.dart';
 
 class AuthController extends ChangeNotifier {
-  final AuthRepositoryImpl _authRepository = AuthRepositoryImpl();
+  final AuthRepositoryImpl _authRepository = getIt<AuthRepositoryImpl>();
 
   ClientModel? _client;
   UserModel? _service;

@@ -5,10 +5,11 @@ import 'package:optifila/views/auth/register_client_view.dart';
 import 'package:optifila/views/auth/register_type_view.dart';
 import 'package:optifila/views/business/business_shell.dart';
 import 'package:optifila/views/client/client_shell.dart';
-
 import 'app_theme.dart';
+import 'core/di/injection_dart.dart';
 
 void main() {
+  setupDependencies();
   runApp(const MyApp());
 }
 

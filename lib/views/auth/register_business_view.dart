@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
+import '../../core/di/injection_dart.dart';
 import '../../models/category_model.dart';
 import '../../repositories/category_repository.dart';
 import '../widgets/common_widgets.dart';
@@ -13,10 +14,9 @@ class _State extends State<RegisterBusinessView> {
   final   _name     = TextEditingController();
   final   _email    = TextEditingController();
   final   _password = TextEditingController();
-  final   _bName    = TextEditingController();
   bool    _obscure   = true;
   bool    _loading   = false;
-  final   _category = CategoryRepository();
+  final   _category = getIt<CategoryRepository>();
 
   List<CategoryModel> _categories = [];
   CategoryModel?      _selectedCategory;
@@ -24,7 +24,7 @@ class _State extends State<RegisterBusinessView> {
   Future<void> _submit() async {
     if (_email.text.isEmpty ||
         _password.text.isEmpty ||
-        _bName.text.isEmpty ||
+        _name.text.isEmpty ||
         _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -38,10 +38,10 @@ class _State extends State<RegisterBusinessView> {
     setState(() => _loading = true);
 
     final ok = await AppControllers.auth.registerService(
-      serviceName: _bName.text.trim(),
+      serviceName: _name.text.trim(),
       email: _email.text.trim(),
       password: _password.text,
-      categoryId: _selectedCategory!.id, // luego será ID real
+      categoryId: _selectedCategory!.id,
     );
 
     if (!mounted) return;
@@ -71,6 +71,7 @@ class _State extends State<RegisterBusinessView> {
       setState(() => _categories = data);
     } catch (e) {
       // mostrar error
+      print('Error al cargar categorías: $e');
     }
   }
 
@@ -101,7 +102,7 @@ class _State extends State<RegisterBusinessView> {
         decoration:const BoxDecoration(color:Colors.white,borderRadius:BorderRadius.vertical(top:Radius.circular(20))),
         child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           const SizedBox(height:8),
-          _label('Nombre completo'), TextField(controller:_name, decoration:const InputDecoration(hintText:'Juan Pérez')),
+          _label('Nombre del negocio'), TextField(controller:_name, decoration:const InputDecoration(hintText:'Mi negocio...')),
           const SizedBox(height:14),
           _label('Email'), TextField(controller:_email, keyboardType:TextInputType.emailAddress, decoration:const InputDecoration(hintText:'tu@email.com')),
           const SizedBox(height:14),
@@ -111,8 +112,6 @@ class _State extends State<RegisterBusinessView> {
             suffixIcon:IconButton(icon:Icon(_obscure?Icons.visibility_off_outlined:Icons.visibility_outlined,size:20,color:AppTheme.textLight),
               onPressed:()=>setState(()=>_obscure=!_obscure)),
           )),
-          const SizedBox(height:14),
-          _label('Nombre del negocio'), TextField(controller:_bName, decoration:const InputDecoration(hintText:'Mi Negocio')),
           const SizedBox(height:14),
           _label('Categoría'),
           Container(

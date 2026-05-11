@@ -1,21 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../core/network/rest/api_client.dart';
 import '../models/category_model.dart';
 
 class CategoryRepository {
-  static const _baseUrl =
-      'https://backi251-optifila-backend.hf.space/api/v1';
+  final ApiClient _apiClient;
+
+  CategoryRepository(this._apiClient);
 
   Future<List<CategoryModel>> getCategories() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/category'),
+
+    final decoded = await _apiClient.get(
+      '/category',
     );
-
-    if (response.statusCode != 200) {
-      throw Exception('Error al obtener categorías');
-    }
-
-    final decoded = jsonDecode(response.body);
     final List list = decoded['data'];
 
     return list
