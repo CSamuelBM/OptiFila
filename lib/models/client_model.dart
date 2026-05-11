@@ -1,19 +1,28 @@
+
 class ClientModel {
   final String   id;
-  final String   name;
+  final String   firstName;
+  final String   lastName;
+  final String   secondLastName;
   final String   email;
-  final String   phone;
-  final DateTime lastVisit;
-  final int      totalVisits;
-  final bool     isInTurn;
 
   const ClientModel({
     required this.id,
-    required this.name,
+    required this.firstName,
+    required this.lastName,
+    required this.secondLastName,
     required this.email,
-    required this.phone,
-    required this.lastVisit,
-    required this.totalVisits,
-    this.isInTurn = false,
   });
+
+  //FROM JSON (Backend → App)
+  factory ClientModel.fromJson(Map<String, dynamic> json){
+    return ClientModel(
+        id: json['id']?.toString() ?? '',
+        firstName: json['firstName'] ?? '',
+        lastName: json['lastName'] ?? '',
+        secondLastName: json['secondLastName'] ?? '',
+        email: json['email'] ?? '',
+    );
+  }
+
 }

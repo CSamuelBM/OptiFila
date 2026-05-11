@@ -1,29 +1,33 @@
 class UserModel {
   final String id;
-  final String name;
+  final String serviceName;
+  final String categoryId;
   final String email;
-  final String phone;
-  final String location;
-  final int totalTurnos;
-  final int activeTurnos;
-  final int favorites;
 
   const UserModel({
     required this.id,
-    required this.name,
+    required this.serviceName,
+    required this.categoryId,
     required this.email,
-    this.phone       = '',
-    this.location    = '',
-    this.totalTurnos  = 0,
-    this.activeTurnos = 0,
-    this.favorites   = 0,
   });
 
-  UserModel copyWith({String? name, String? email, String? phone, String? location}) {
+  //FROM JSON (Backend → App)
+  factory UserModel.fromJson(Map<String, dynamic> json){
     return UserModel(
-      id: id, name: name ?? this.name, email: email ?? this.email,
-      phone: phone ?? this.phone, location: location ?? this.location,
-      totalTurnos: totalTurnos, activeTurnos: activeTurnos, favorites: favorites,
+        id: json['id']?.toString() ?? '',
+        serviceName: json['serviceName'] ?? '',
+        categoryId: json['serviceCategory']?['categoryId']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+    );
+  }
+
+  // COPY WITH (Estado local)
+  UserModel copyWith({String? serviceName, String? categoryId, String? email}) {
+    return UserModel(
+      id: id,
+      serviceName: serviceName ?? this.serviceName,
+      categoryId: categoryId ??   this.categoryId,
+      email: email ??             this.email,
     );
   }
 }

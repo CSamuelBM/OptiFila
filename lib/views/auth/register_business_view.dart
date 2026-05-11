@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
+import '../../models/category_model.dart';
+import '../../repositories/category_repository.dart';
+import '../widgets/common_widgets.dart';
 
 class RegisterBusinessView extends StatefulWidget {
   const RegisterBusinessView({super.key});
@@ -74,6 +77,22 @@ class _S extends State<RegisterBusinessView> {
       ),
     );
   }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final data = await _category.getCategories();
+      setState(() => _categories = data);
+    } catch (e) {
+      // mostrar error
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) => Scaffold(

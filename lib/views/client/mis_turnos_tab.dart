@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
+import '../../enum/turn_status_enum.dart';
 import '../../models/turn_model.dart';
 
 class MisTurnosTab extends StatefulWidget {

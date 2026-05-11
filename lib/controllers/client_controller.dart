@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../enum/turn_status_enum.dart';
 import '../models/business_model.dart';
 import '../models/turn_model.dart';
 
@@ -16,10 +17,10 @@ class ClientController extends ChangeNotifier {
   ];
 
   final List<TurnModel> _turns = [
-    TurnModel(id:'t1', number:42, businessName:'Restaurante El Buen Sabor', businessType:'Restaurante', address:'Av. Principal 456',   dateTime: DateTime.now(),                                    status: TurnStatus.active,    waitMinutes:12),
+    TurnModel(id:'t1', number:42, businessName:'Restaurante El Buen Sabor', businessType:'Restaurante', address:'Av. Principal 456',   dateTime: DateTime.now(),                                    status: TurnStatus.inProgress,    waitMinutes:12),
     TurnModel(id:'t2', number:15, businessName:'Salón de Belleza Elegance', businessType:'Belleza',     address:'Calle Secundaria 789', dateTime: DateTime.now().subtract(const Duration(days:1, hours:13)), status: TurnStatus.completed),
     TurnModel(id:'t3', number:28, businessName:'Banco Nacional',            businessType:'Banco',       address:'Plaza Central 123',   dateTime: DateTime(2026,3,15,10,15),                         status: TurnStatus.completed),
-    TurnModel(id:'t4', number:7,  businessName:'Centro Médico Salud',       businessType:'Médico',      address:'Av. Médica 321',      dateTime: DateTime(2026,3,10,15,45),                         status: TurnStatus.cancelled),
+    TurnModel(id:'t4', number:7,  businessName:'Centro Médico Salud',       businessType:'Médico',      address:'Av. Médica 321',      dateTime: DateTime(2026,3,10,15,45),                         status: TurnStatus.canceled),
   ];
 
   List<BusinessModel> get filteredBusinesses {
@@ -33,9 +34,9 @@ class ClientController extends ChangeNotifier {
   }
 
   List<TurnModel> get allTurns       => _turns;
-  List<TurnModel> get activeTurns    => _turns.where((t) => t.status == TurnStatus.active).toList();
+  List<TurnModel> get activeTurns    => _turns.where((t) => t.status == TurnStatus.inProgress).toList();
   List<TurnModel> get completedTurns => _turns.where((t) => t.status == TurnStatus.completed).toList();
-  List<TurnModel> get cancelledTurns => _turns.where((t) => t.status == TurnStatus.cancelled).toList();
+  List<TurnModel> get cancelledTurns => _turns.where((t) => t.status == TurnStatus.canceled).toList();
 
   void setCategory(String c) { _category = c; notifyListeners(); }
   void setSearch(String s)   { _search = s;   notifyListeners(); }
