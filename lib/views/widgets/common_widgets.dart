@@ -95,3 +95,117 @@ Widget optifilaLogo({double size=32}) => Container(
     ]),
   ]),
 );
+
+// ── WIDGETS AUXILIARES ──
+
+class _Stat extends StatelessWidget {
+  final int value;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _Stat({required this.value, required this.label, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 6),
+            Text(
+              '$value',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Usamos InfoRow que ya tienes definido en tu archivo de componentes
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+
+  const _InfoRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    // Reutilizamos tu componente global InfoRow
+    return InfoRow(icon: icon, label: label, value: value);
+  }
+}
+
+// Corrección de _PrefRow
+class _PrefRow extends StatelessWidget {
+  final IconData icon;
+  final String label, subtitle;
+  final VoidCallback onTap;
+
+  const _PrefRow({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.headerTeal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 18, color: AppTheme.headerTeal),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: AppTheme.textLight),
+          ],
+        ),
+      ),
+    );
+  }
+}

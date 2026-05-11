@@ -10,97 +10,67 @@ class EditarPerfilView extends StatefulWidget {
 }
 
 class _EditarPerfilViewState extends State<EditarPerfilView> {
-  // Controladores para capturar el texto de los campos
+  // Controladores generales
+  final _emailCtrl = TextEditingController();
+
+  // Controladores específicos para Cliente
   final _nameCtrl = TextEditingController();
   final _paternoCtrl = TextEditingController();
   final _maternoCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _locationCtrl = TextEditingController();
+
+  // Controlador específico para Servicio/Negocio
+  final _serviceNameCtrl = TextEditingController();
+
+  bool _isService = false;
 
   @override
   void initState() {
     super.initState();
-    // Cargamos los datos actuales del usuario al iniciar
-    final u = AppControllers.auth.user;
-    if (u != null) {
-      _nameCtrl.text = u.name.split(' ').first; // Ejemplo: toma el primer nombre
-      _emailCtrl.text = u.email;
-      _phoneCtrl.text = u.phone;
-      _locationCtrl.text = u.location;
-      // Los apellidos podrías separarlos si tu modelo lo permite
-      _paternoCtrl.text = "Pérez";
-      _maternoCtrl.text = "García";
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final auth = AppControllers.auth;
+    _isService = auth.isService;
+
+    if (_isService) {
+      // Caso: Usuario es un Negocio (UserModel)
+      final s = auth.service;
+      if (s != null) {
+        _serviceNameCtrl.text = s.serviceName;
+        _emailCtrl.text = s.email;
+      }
+    } else {
+      // Caso: Usuario es un Cliente (ClientModel)
+      final c = auth.client;
+      if (c != null) {
+        _nameCtrl.text = c.firstName;
+        _paternoCtrl.text = c.lastName;
+        _maternoCtrl.text = c.secondLastName;
+        _emailCtrl.text = c.email;
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    // Es vital hacer dispose para evitar fugas de memoria
+    _nameCtrl.dispose();
+    _paternoCtrl.dispose();
+    _maternoCtrl.dispose();
+    _emailCtrl.dispose();
+    _serviceNameCtrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA), // Fondo gris azulado claro
+      backgroundColor: const Color(0xFFF4F7FA),
       body: Column(
         children: [
           // ── Header Azul ──
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.headerTeal.withOpacity(0.9), AppTheme.headerTeal],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 12,
-              left: 16,
-              right: 16,
-              bottom: 24,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                      SizedBox(width: 6),
-                      Text('Volver', style: TextStyle(color: Colors.white, fontSize: 15)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.person_outline, size: 32, color: Colors.white),
-                    ),
-                    const SizedBox(width: 16),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Editar Perfil',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        Text(
-                          'Actualiza tu información personal',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          _buildHeader(context),
 
           // ── Formulario ──
           Expanded(
@@ -109,25 +79,24 @@ class _EditarPerfilViewState extends State<EditarPerfilView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildLabel("Nombre"),
-                  _buildTextField(_nameCtrl, Icons.person_outline, "Juan"),
+                  if (_isService) ...[
+                    // Campos para Negocio
+                    _buildLabel("Nombre del Servicio/Negocio"),
+                    _buildTextField(_serviceNameCtrl, Icons.storefront, "Ej. Restaurante Central"),
+                  ] else ...[
+                    // Campos para Cliente
+                    _buildLabel("Nombre"),
+                    _buildTextField(_nameCtrl, Icons.person_outline, "Nombre"),
+                    _buildLabel("Apellido Paterno"),
+                    _buildTextField(_paternoCtrl, Icons.person_outline, "Apellido"),
+                    _buildLabel("Apellido Materno"),
+                    _buildTextField(_maternoCtrl, Icons.person_outline, "Apellido"),
+                  ],
 
-                  _buildLabel("Apellido Paterno"),
-                  _buildTextField(_paternoCtrl, Icons.person_outline, "Pérez"),
+                  _buildLabel("Email (Informativo)"),
+                  _buildTextField(_emailCtrl, Icons.email_outlined, "email@ejemplo.com", enabled: false),
 
-                  _buildLabel("Apellido Materno"),
-                  _buildTextField(_maternoCtrl, Icons.person_outline, "García"),
-
-                  _buildLabel("Email"),
-                  _buildTextField(_emailCtrl, Icons.email_outlined, "usuario@email.com"),
-
-                  _buildLabel("Teléfono"),
-                  _buildTextField(_phoneCtrl, Icons.phone_outlined, "+1 234 567 8900"),
-
-                  _buildLabel("Ubicación"),
-                  _buildTextField(_locationCtrl, Icons.location_on_outlined, "Ciudad, País"),
-
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Botón Guardar
                   SizedBox(
@@ -135,7 +104,7 @@ class _EditarPerfilViewState extends State<EditarPerfilView> {
                     height: 54,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Aquí iría la lógica para guardar los cambios
+                        // Aquí llamarías a la lógica de actualización del Repositorio
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
@@ -158,54 +127,71 @@ class _EditarPerfilViewState extends State<EditarPerfilView> {
     );
   }
 
-  // Widget auxiliar para las etiquetas (Labels)
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppTheme.headerTeal,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 12,
+        left: 16, right: 16, bottom: 24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Row(
+              children: [
+                Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                SizedBox(width: 6),
+                Text('Volver', style: TextStyle(color: Colors.white, fontSize: 15)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Editar Perfil',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const Text(
+            'Mantén tus datos actualizados',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8, top: 16),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1B3A50), // Un azul oscuro para los labels
-        ),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1B3A50)),
       ),
     );
   }
 
-  // Widget auxiliar para los Campos de Texto
-  Widget _buildTextField(TextEditingController controller, IconData icon, String hint) {
+  Widget _buildTextField(TextEditingController controller, IconData icon, String hint, {bool enabled = true}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: enabled ? Colors.white : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+        enabled: enabled,
+        style: TextStyle(fontSize: 15, color: enabled ? AppTheme.textPrimary : Colors.grey),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-          prefixIcon: Icon(icon, color: Colors.blue.shade300, size: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppTheme.headerTeal, width: 1.5),
-          ),
+          prefixIcon: Icon(icon, color: AppTheme.headerTeal.withOpacity(0.5), size: 20),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
