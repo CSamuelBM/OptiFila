@@ -1,6 +1,4 @@
-import 'dart:convert';
-import 'dart:ffi';
-import 'package:http/http.dart' as http;
+import '../core/network/rest/api_client.dart';
 import '../models/client_model.dart';
 import '../models/login_result.dart';
 import '../models/user_model.dart';
@@ -8,59 +6,57 @@ import '../requests/client_request.dart';
 import '../requests/user_request.dart';
 
 class AuthRepositoryImpl {
-  static const String _baseUrl =
-      'https://backi251-optifila-backend.hf.space/api/v1';
+  final ApiClient _apiClient;
 
-  /// ✅ SIGNUP CLIENTE
-  Future<ClientModel> signupClient(ClientRequest request) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/auth/signup/client'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(request.toJson()),
+  AuthRepositoryImpl(this._apiClient);
+
+  /// =========================
+  /// SIGNUP CLIENTE
+  /// =========================
+  Future<ClientModel> signupClient(
+      ClientRequest request,
+      ) async {
+    final decoded = await _apiClient.post(
+      '/auth/signup/client',
+      body: request.toJson(),
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Error al crear cliente');
-    }
-
-    final decoded = jsonDecode(response.body);
-    return ClientModel.fromJson(decoded['data']['user']);
-  }
-
-  /// ✅ SIGNUP SERVICIO
-  Future<UserModel> signupService(UserRequest request) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/auth/signup/service'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(request.toJson()),
+    return ClientModel.fromJson(
+      decoded['data']['user'],
     );
-    final success = jsonDecode(response.body)['success'];
-    if (!success) {
-      throw Exception('Error al registrar negocio');
-    }
-
-    final decoded = jsonDecode(response.body);
-    return UserModel.fromJson(decoded['data']['user']);
   }
 
-  /// ✅ LOGIN (cliente o servicio)
-  Future<LoginResult> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+  /// =========================
+  /// SIGNUP SERVICIO
+  /// =========================
+  Future<UserModel> signupService(
+      UserRequest request,
+      ) async {
+    final decoded = await _apiClient.post(
+      '/auth/signup/service',
+      body: request.toJson(),
+    );
+
+    return UserModel.fromJson(
+      decoded['data']['user'],
+    );
+  }
+
+  /// =========================
+  /// LOGIN
+  /// =========================
+  Future<LoginResult> login(
+      String email,
+      String password,
+      ) async {
+    final decoded = await _apiClient.post(
+      '/auth/login',
+      body: {
         'email': email,
         'password': password,
-      }),
+      },
     );
 
-    final success = jsonDecode(response.body)['success'];
-
-    if (!success) {
-      throw Exception('Credenciales incorrectas');
-    }
-
-    final decoded = jsonDecode(response.body);
     final role = decoded['data']['role'];
     final userJson = decoded['data']['user'];
 
@@ -69,11 +65,11 @@ class AuthRepositoryImpl {
         role: role,
         service: UserModel.fromJson(userJson),
       );
-    } else {
-      return LoginResult(
-        role: role,
-        client: ClientModel.fromJson(userJson),
-      );
     }
+
+    return LoginResult(
+      role: role,
+      client: ClientModel.fromJson(userJson),
+    );
   }
 }
