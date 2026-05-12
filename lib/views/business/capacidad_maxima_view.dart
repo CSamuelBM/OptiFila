@@ -5,9 +5,9 @@ class CapacidadMaximaView extends StatefulWidget {
   const CapacidadMaximaView({super.key});
   @override State<CapacidadMaximaView> createState() => _S();
 }
+
 class _S extends State<CapacidadMaximaView> {
   int _cap = 50;
-  void _ch(int d){ final n=_cap+d; if(n>=10&&n<=200) setState(()=>_cap=n); }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -40,14 +40,29 @@ class _S extends State<CapacidadMaximaView> {
               const SizedBox(height:16),
               Container(width:100,height:100,decoration:const BoxDecoration(color:AppTheme.bgLight,shape:BoxShape.circle),
                   child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                    Text('\$_cap',style:const TextStyle(fontSize:32,fontWeight:FontWeight.bold,color:AppTheme.accentBlue)),
+                    Text('$_cap',style:const TextStyle(fontSize:36,fontWeight:FontWeight.bold,color:AppTheme.accentBlue)),
                     const Text('turnos/día',style:TextStyle(fontSize:11,color:AppTheme.textSecondary)),
                   ])),
               const SizedBox(height:20),
-              Row(mainAxisAlignment:MainAxisAlignment.center,children:[
-                _Btn(icon:Icons.remove,onTap:()=>_ch(-1)),
-                const SizedBox(width:20),
-                _Btn(icon:Icons.add,onTap:()=>_ch(1)),
+              // ── Se reemplazaron los botones por el Slider ──
+              SliderTheme(
+                  data:SliderThemeData(
+                      activeTrackColor:AppTheme.accentBlue,
+                      thumbColor:AppTheme.accentBlue,
+                      inactiveTrackColor:AppTheme.borderColor,
+                      overlayColor:AppTheme.accentBlue.withOpacity(0.2)
+                  ),
+                  child:Slider(
+                      value:_cap.toDouble(),
+                      min:10,
+                      max:200,
+                      divisions:190, // Permite mover la barra de 1 en 1
+                      onChanged:(v)=>setState(()=>_cap=v.round())
+                  )
+              ),
+              const Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
+                Text('10',style:TextStyle(fontSize:12,color:AppTheme.textSecondary)),
+                Text('200',style:TextStyle(fontSize:12,color:AppTheme.textSecondary)),
               ]),
             ])),
         const SizedBox(height:14),
@@ -74,22 +89,29 @@ class _S extends State<CapacidadMaximaView> {
                       color:_cap==v?AppTheme.accentBlue:Colors.white,
                       borderRadius:BorderRadius.circular(10),
                       border:Border.all(color:_cap==v?AppTheme.accentBlue:AppTheme.borderColor)),
-                  child:Text('\$v',textAlign:TextAlign.center,
+                  child:Text('$v',textAlign:TextAlign.center,
                       style:TextStyle(fontSize:14,fontWeight:FontWeight.w600,color:_cap==v?Colors.white:AppTheme.textPrimary)),
                 ))))).toList()),
         const SizedBox(height:24),
-        SizedBox(width:double.infinity,child:ElevatedButton(onPressed:()=>Navigator.pop(context),child:const Text('Guardar Configuración'))),
+        SizedBox(
+            width:double.infinity,
+            child:ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                ),
+                onPressed:()=>Navigator.pop(context),
+                child:const Text('Guardar Configuración', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+            )
+        ),
         const SizedBox(height:16),
       ]))),
     ])),
   );
 }
-class _Btn extends StatelessWidget {
-  final IconData icon; final VoidCallback onTap; const _Btn({required this.icon,required this.onTap});
-  @override Widget build(BuildContext context)=>GestureDetector(onTap:onTap,
-      child:Container(width:48,height:48,decoration:BoxDecoration(color:AppTheme.bgLight,borderRadius:BorderRadius.circular(12)),
-          child:Icon(icon,color:AppTheme.accentBlue,size:22)));
-}
+
 class _Bul extends StatelessWidget {
   final String text; const _Bul(this.text);
   @override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.only(bottom:4,left:16),
