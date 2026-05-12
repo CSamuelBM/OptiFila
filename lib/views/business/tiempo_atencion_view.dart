@@ -6,7 +6,7 @@ class TiempoAtencionView extends StatefulWidget {
   @override State<TiempoAtencionView> createState() => _S();
 }
 class _S extends State<TiempoAtencionView> {
-  double _min = 8;
+  double _min = 17; // Lo iniciamos en 17 para que coincida con tu diseño
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -38,9 +38,10 @@ class _S extends State<TiempoAtencionView> {
             child:Column(children:[
               const Text('Tiempo promedio actual',style:TextStyle(fontSize:13,color:AppTheme.textSecondary)),
               const SizedBox(height:16),
-              Container(width:90,height:90,decoration:const BoxDecoration(color:AppTheme.bgLight,shape:BoxShape.circle),
+              Container(width:100,height:100,decoration:const BoxDecoration(color:AppTheme.bgLight,shape:BoxShape.circle),
                   child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-                    Text('\${_min.round()}',style:const TextStyle(fontSize:32,fontWeight:FontWeight.bold,color:AppTheme.accentBlue)),
+                    // ── Corrección: Se quitó el \ de la interpolación ──
+                    Text('${_min.round()}',style:const TextStyle(fontSize:36,fontWeight:FontWeight.bold,color:AppTheme.accentBlue)),
                     const Text('minutos',style:TextStyle(fontSize:12,color:AppTheme.textSecondary)),
                   ])),
               const SizedBox(height:16),
@@ -78,7 +79,8 @@ class _S extends State<TiempoAtencionView> {
                       color:_min.round()==m?AppTheme.accentBlue:Colors.white,
                       borderRadius:BorderRadius.circular(10),
                       border:Border.all(color:_min.round()==m?AppTheme.accentBlue:AppTheme.borderColor)),
-                  child:Text('\${m}m',textAlign:TextAlign.center,
+                  // ── Corrección: Se quitó el \ de la interpolación ──
+                  child:Text('${m}m',textAlign:TextAlign.center,
                       style:TextStyle(fontSize:14,fontWeight:FontWeight.w600,
                           color:_min.round()==m?Colors.white:AppTheme.textPrimary)),
                 ))))).toList()),
@@ -89,13 +91,27 @@ class _S extends State<TiempoAtencionView> {
               const Text('Vista previa de estimación',style:TextStyle(fontSize:13,fontWeight:FontWeight.w600,color:AppTheme.textPrimary)),
               const SizedBox(height:12),
               Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[3,5,10].map((p)=>Column(children:[
-                Text('\$p personas',style:const TextStyle(fontSize:11,color:AppTheme.textSecondary)),
+                // ── Corrección: Se quitó el \ de la interpolación ──
+                Text('$p personas',style:const TextStyle(fontSize:11,color:AppTheme.textSecondary)),
                 const SizedBox(height:4),
-                Text('\${(p*_min).round()}m',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold,color:AppTheme.textPrimary)),
+                // ── Corrección: Se quitó el \ de la interpolación ──
+                Text('${(p*_min).round()}m',style:const TextStyle(fontSize:20,fontWeight:FontWeight.bold,color:AppTheme.textPrimary)),
               ])).toList()),
             ])),
         const SizedBox(height:24),
-        SizedBox(width:double.infinity,child:ElevatedButton(onPressed:()=>Navigator.pop(context),child:const Text('Guardar Configuración'))),
+        SizedBox(
+            width:double.infinity,
+            child:ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                ),
+                onPressed:()=>Navigator.pop(context),
+                child:const Text('Guardar Configuración', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+            )
+        ),
         const SizedBox(height:16),
       ]))),
     ])),
