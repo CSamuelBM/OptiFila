@@ -1,9 +1,9 @@
-import '../core/network/rest/api_client.dart';
-import '../models/client_model.dart';
-import '../models/login_result.dart';
-import '../models/user_model.dart';
-import '../requests/client_request.dart';
-import '../requests/user_request.dart';
+import '../../core/network/rest/api_client.dart';
+import '../../models/client_model.dart';
+import '../../models/login_result.dart';
+import '../../models/user_model.dart';
+import '../../requests/client_request.dart';
+import '../../requests/user_request.dart';
 
 class AuthRepositoryImpl {
   final ApiClient _apiClient;

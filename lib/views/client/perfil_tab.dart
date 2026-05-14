@@ -174,6 +174,7 @@ class _S extends State<PerfilTab> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       auth.logout();
+                      AppControllers.client.clearConnectionsAndData();
                       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                     },
                     icon: const Icon(Icons.logout, color: AppTheme.errorRed),

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
-import '../../models/business_model.dart';
-import '../auth/turn_detail_view.dart';
+import '../../app_controllers.dart'; // <--- Importa tu AppControllers para usar la instancia del ClientController
+import '../../models/service/service_model.dart';
+import '../client/client_shell.dart';
 
 class BusinessDetailView extends StatelessWidget {
-  final BusinessModel business;
-  const BusinessDetailView({super.key, required this.business});
+  final ServiceModel service;
+
+  const BusinessDetailView({super.key, required this.service});
 
   @override
   Widget build(BuildContext context) {
@@ -53,10 +55,10 @@ class BusinessDetailView extends StatelessWidget {
                         bottom: 50,
                         left: 16,
                         child: Row(children: [
-                          _Chip(label: business.category),
+                          _Chip(label: service.category.displayName), // <--- Categoría dinámica
                           const SizedBox(width: 8),
-                          _Chip(
-                            label: '⭐ ${business.rating} (124)',
+                          const _Chip(
+                            label: '⭐ 4.5 (124)', // Placeholder
                             icon: null,
                           ),
                         ]),
@@ -67,7 +69,7 @@ class BusinessDetailView extends StatelessWidget {
                         left: 16,
                         right: 16,
                         child: Text(
-                          business.name,
+                          service.serviceName, // <--- Nombre dinámico
                           style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white,
                           ),
@@ -95,14 +97,14 @@ class BusinessDetailView extends StatelessWidget {
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         const Text('Tiempo de espera estimado',
                             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                        Text('${business.waitMinutes} min',
-                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                        const Text('15 min', // Placeholder
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                         const SizedBox(height: 4),
-                        Row(children: [
-                          const Icon(Icons.group_outlined, size: 14, color: AppTheme.textSecondary),
-                          const SizedBox(width: 4),
-                          Text('${business.queueCount} personas en espera',
-                              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                        Row(children: const [
+                          Icon(Icons.group_outlined, size: 14, color: AppTheme.textSecondary),
+                          SizedBox(width: 4),
+                          Text('3 personas en espera', // Placeholder
+                              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                         ]),
                       ]),
                       Container(
@@ -124,36 +126,27 @@ class BusinessDetailView extends StatelessWidget {
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                     const SizedBox(height: 8),
                     const Text(
-                      'Disfruta de nuestros cafés artesanales y postres caseros en un ambiente acogedor.',
+                      'Información general sobre el servicio prestado en esta sucursal.', // Placeholder
                       style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
                     ),
                     const SizedBox(height: 16),
                     _InfoCard(
-                      icon: Icons.location_on_outlined,
+                      icon: Icons.email_outlined, // <--- Cambiado a correo
                       iconColor: AppTheme.accentOrange,
-                      title: 'Dirección',
-                      subtitle: business.address,
-                      extra: '0.5 km de distancia',
+                      title: 'Correo',
+                      subtitle: service.email, // <--- Dinámico
+                      extra: 'Contacto oficial',
                       extraColor: AppTheme.accentOrange,
                     ),
                     const SizedBox(height: 10),
-                    _InfoCard(
+                    const _InfoCard(
                       icon: Icons.access_time_outlined,
                       iconColor: AppTheme.accentOrange,
                       title: 'Horario',
-                      subtitle: 'Lun - Sab: 8:00 AM - 8:00 PM',
+                      subtitle: 'Lun - Sab: 8:00 AM - 8:00 PM', // Placeholder
                       extra: 'Abierto ahora',
                       extraColor: AppTheme.successGreen,
                       extraDot: true,
-                    ),
-                    const SizedBox(height: 10),
-                    _InfoCard(
-                      icon: Icons.phone_outlined,
-                      iconColor: AppTheme.textSecondary,
-                      title: 'Contacto',
-                      subtitle: '+1 234 567 890',
-                      extra: 'www.cafeteriacentral.com',
-                      extraColor: AppTheme.textSecondary,
                     ),
                     const SizedBox(height: 100), // space for button
                   ]),
@@ -172,10 +165,58 @@ class BusinessDetailView extends StatelessWidget {
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, -4))],
               ),
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => TurnDetailView(business: business),
-                  ));
+                onPressed: () async {
+                  final client = AppControllers.auth.client;
+
+                  if (client == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Sesión no válida'),
+                        backgroundColor: AppTheme.errorRed,
+                      ),
+                    );
+                    return;
+                  }
+
+                  final ctrl = AppControllers.client;
+
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+
+                  final success = await ctrl.joinQueue(
+                    service.serviceId,
+                    client.id,
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                  }
+
+                  if (success && context.mounted) {
+                    await ctrl.loadInitialData(client.id);
+
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ClientShell(initialIndex: 1),
+                      ),
+                          (route) => false,
+                    );
+                  } else if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Error al reservar el turno. Inténtalo de nuevo.',
+                        ),
+                        backgroundColor: AppTheme.errorRed,
+                      ),
+                    );
+                  }
                 },
                 child: const Text('Reservar Turno'),
               ),

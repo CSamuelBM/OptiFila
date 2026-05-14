@@ -1,36 +1,54 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
-import '../../models/business_model.dart';
+import '../../models/category_model.dart';
+import '../../models/client_model.dart';
+import '../../models/service/service_model.dart';
 import '../business/business_detail_view.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
   @override
-  State<HomeTab> createState() => _State();
+  State<HomeTab> createState() => _HomeTabState();
 }
 
-class _State extends State<HomeTab> {
-  static const _categories = ['Todos', 'Restaurantes', 'Belleza', 'Bancos'];
+class _HomeTabState extends State<HomeTab> {
+  @override
+  void initState() {
+    super.initState();
+
+    // ── INICIALIZACIÓN SEGURA (FORZA LA RECARGA SIEMPRE) ──
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctrl = AppControllers.client;
+      final clientId = AppControllers.auth.client?.id;
+
+      // Al quitar la condición (ctrl.categories.isEmpty), nos aseguramos
+      // de que siempre pida los datos más recientes para el cliente actual.
+      ctrl.loadInitialData(clientId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final ctrl = AppControllers.client;
+    final ClientModel? client = AppControllers.auth.client;
+
     return ListenableBuilder(
       listenable: ctrl,
       builder: (ctx, _) {
-        final businesses = ctrl.filteredBusinesses;
+        final List<ServiceModel> services = ctrl.filteredServices;
 
-        // ── Se añadió el Container con el color de fondo solicitado ──
+        // Agregamos null para representar "Todos"
+        final List<CategoryModel?> displayCategories = [null, ...ctrl.categories];
+
         return Container(
           color: const Color(0xFFD6EAF8),
           child: Column(
             children: [
-              // ── Stack para superponer los botones al Header ──
+              // ── Stack Header ──
               Stack(
                 alignment: Alignment.bottomCenter,
                 children: [
-                  // Fondo: Header Azul + Espacio transparente inferior
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -41,14 +59,11 @@ class _State extends State<HomeTab> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
-                          // Esquinas redondeadas en la parte inferior
                           borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
                         ),
                         padding: EdgeInsets.only(
                           top: MediaQuery.of(context).padding.top + 16,
-                          left: 16,
-                          right: 16,
-                          bottom: 32, // Espacio suficiente debajo del buscador
+                          left: 16, right: 16, bottom: 32,
                         ),
                         child: Column(
                           children: [
@@ -58,13 +73,13 @@ class _State extends State<HomeTab> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Row(
+                                      Row(
                                         children: [
-                                          Text('Hola, Usuario',
-                                              style: TextStyle(
+                                          Text('¡Hola, ${client?.firstName ?? 'Usuario'}!',
+                                              style: const TextStyle(
                                                   fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                                          SizedBox(width: 6),
-                                          Text('👋', style: TextStyle(fontSize: 20)),
+                                          const SizedBox(width: 6),
+                                          const Text('👋', style: TextStyle(fontSize: 20)),
                                         ],
                                       ),
                                       const SizedBox(height: 2),
@@ -79,7 +94,7 @@ class _State extends State<HomeTab> {
                             TextField(
                               onChanged: ctrl.setSearch,
                               decoration: InputDecoration(
-                                hintText: 'Buscar negocios...',
+                                hintText: 'Buscar servicios...',
                                 prefixIcon: const Icon(Icons.search, color: AppTheme.textLight),
                                 filled: true,
                                 fillColor: Colors.white,
@@ -93,55 +108,53 @@ class _State extends State<HomeTab> {
                           ],
                         ),
                       ),
-                      // Espacio transparente que equivale a la mitad de la altura de los botones
                       const SizedBox(height: 20),
                     ],
                   ),
 
-                  // Frente: Filtros flotantes (mitad azul, mitad blanco)
                   Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
+                    bottom: 0, left: 0, right: 0,
                     child: SizedBox(
-                      height: 40, // Altura total de los botones
+                      height: 40,
                       child: ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         scrollDirection: Axis.horizontal,
-                        itemCount: _categories.length,
+                        itemCount: displayCategories.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (ctx, i) {
-                          final sel = ctrl.selectedCategory == _categories[i];
+                          final category = displayCategories[i];
+                          final isTodos = category == null;
 
-                          // Color azul más claro para el estado seleccionado
+                          final isSelected = isTodos
+                              ? ctrl.selectedCategory == null
+                              : ctrl.selectedCategory?.id == category.id;
+
                           const Color activeColor = Color(0xFF2A8CBA);
 
                           return GestureDetector(
-                            onTap: () => ctrl.setCategory(_categories[i]),
+                            onTap: () => ctrl.setCategory(category),
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                               decoration: BoxDecoration(
-                                color: sel ? activeColor : Colors.white,
+                                color: isSelected ? activeColor : Colors.white,
                                 borderRadius: BorderRadius.circular(20),
-                                // Sombra sutil para destacar el efecto de "flotado"
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    blurRadius: 8, offset: const Offset(0, 3),
                                   ),
                                 ],
                                 border: Border.all(
-                                  color: sel ? activeColor : Colors.grey.shade200,
+                                  color: isSelected ? activeColor : Colors.grey.shade200,
                                 ),
                               ),
                               child: Center(
                                 child: Text(
-                                  _categories[i],
+                                  isTodos ? 'Todos' : category.displayName,
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: sel ? Colors.white : AppTheme.textSecondary,
+                                    color: isSelected ? Colors.white : AppTheme.textSecondary,
                                   ),
                                 ),
                               ),
@@ -154,24 +167,30 @@ class _State extends State<HomeTab> {
                 ],
               ),
 
-              // ── List ──
+              // ── Lista de Servicios ──
               Expanded(
-                child: ListView(
+                child: ctrl.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 12),
                   children: [
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Negocios cerca de ti',
+                      children: const [
+                        Text('Servicios cerca de ti',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
                         Icon(Icons.location_on_outlined, size: 20, color: AppTheme.textSecondary),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    ...businesses.map((b) => GestureDetector(
-                      onTap: () => Navigator.push(
-                          context, MaterialPageRoute(builder: (_) => BusinessDetailView(business: b))),
-                      child: _BusinessCard(business: b),
+                    ...services.map((s) => GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => BusinessDetailView(service: s))
+                        );
+                      },
+                      child: _ServiceCard(service: s),
                     )),
                   ],
                 ),
@@ -184,17 +203,19 @@ class _State extends State<HomeTab> {
   }
 }
 
-class _BusinessCard extends StatelessWidget {
-  final BusinessModel business;
-  const _BusinessCard({required this.business});
+class _ServiceCard extends StatelessWidget {
+  final ServiceModel service;
+  const _ServiceCard({required this.service});
 
   Color get _catColor {
-    switch (business.category) {
-      case 'Restaurante':
+    switch (service.category.name.toLowerCase()) {
+      case 'restaurantes':
+      case 'restaurant':
         return Colors.teal.shade400;
-      case 'Belleza':
+      case 'belleza':
         return Colors.blue.shade400;
-      case 'Banco':
+      case 'bancos':
+      case 'banco':
         return Colors.cyan.shade600;
       default:
         return Colors.indigo.shade400;
@@ -210,11 +231,7 @@ class _BusinessCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
@@ -222,34 +239,29 @@ class _BusinessCard extends StatelessWidget {
           Stack(
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 52, height: 52,
                 decoration: BoxDecoration(
                   color: _catColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
                   child: Container(
-                    width: 24,
-                    height: 24,
+                    width: 24, height: 24,
                     decoration: BoxDecoration(color: _catColor, shape: BoxShape.circle),
                   ),
                 ),
               ),
-              if (business.isOpen)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: AppTheme.successGreen,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
+              Positioned(
+                top: 0, right: 0,
+                child: Container(
+                  width: 12, height: 12,
+                  decoration: BoxDecoration(
+                    color: AppTheme.successGreen,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
                   ),
                 ),
+              ),
             ],
           ),
           const SizedBox(width: 16),
@@ -260,30 +272,35 @@ class _BusinessCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(business.name,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    Expanded(
+                      child: Text(service.serviceName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                    ),
+                    const SizedBox(width: 8),
                     Row(
-                      children: [
-                        const Icon(Icons.star, size: 16, color: Color(0xFFFFB400)),
-                        const SizedBox(width: 4),
-                        Text(business.rating.toString(),
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                      children: const [
+                        Icon(Icons.star, size: 16, color: Color(0xFFFFB400)),
+                        SizedBox(width: 4),
+                        Text('4.5', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(business.category,
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                Text(service.category.displayName, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                    const Icon(Icons.email_outlined, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(business.address,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    Expanded(
+                      child: Text(service.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -291,11 +308,10 @@ class _BusinessCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: [
-                        const Icon(Icons.group_outlined, size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text('${business.queueCount} en fila',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      children: const [
+                        Icon(Icons.group_outlined, size: 14, color: Colors.grey),
+                        SizedBox(width: 4),
+                        Text('? en fila', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                       ],
                     ),
                     Container(
@@ -304,10 +320,8 @@ class _BusinessCard extends StatelessWidget {
                         color: AppTheme.headerTeal.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                        '~${business.waitMinutes} min',
-                        style: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.headerTeal),
+                      child: const Text('~-- min',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.headerTeal),
                       ),
                     ),
                   ],

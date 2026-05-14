@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
-import 'cola_espera_view.dart'; // ── IMPORTACIÓN AGREGADA ──
+import 'cola_espera_view.dart';
 
-class InicioTab extends StatelessWidget {
+class InicioTab extends StatefulWidget {
   const InicioTab({super.key});
+
+  @override
+  State<InicioTab> createState() => _InicioTabState();
+}
+
+class _InicioTabState extends State<InicioTab> {
+  @override
+  void initState() {
+    super.initState();
+
+    // ── INICIALIZACIÓN SEGURA ──
+    // addPostFrameCallback asegura que la petición se haga justo después
+    // de que el widget termine de construirse por primera vez.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctrl = AppControllers.business;
+
+      ctrl.initRealTimeUpdates();
+      ctrl.loadDashboardData(); // 👈 Forzamos la carga de datos frescos siempre
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,8 +33,8 @@ class InicioTab extends StatelessWidget {
     return ListenableBuilder(
       listenable: ctrl,
       builder: (ctx, _) {
+        final currentService = AppControllers.auth.service;
 
-        //Color header
         return Container(
           color: const Color(0xFFD6EAF8),
           child: CustomScrollView(
@@ -39,14 +59,13 @@ class InicioTab extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── SECCIÓN DE TEXTOS (SIN BOTÓN DE SALIDA) ──
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Mi Negocio',
-                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-                          SizedBox(height: 2),
-                          Text('Dashboard de gestión',
+                          Text(currentService?.serviceName ?? 'Mi Negocio',
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                          const SizedBox(height: 2),
+                          const Text('Dashboard de gestión',
                               style: TextStyle(fontSize: 14, color: Colors.white70)),
                         ],
                       ),
@@ -57,14 +76,14 @@ class InicioTab extends StatelessWidget {
                             child: _HeaderStat(
                                 icon: Icons.group_outlined,
                                 label: 'En espera',
-                                value: '${ctrl.inQueue}'),
+                                value: '${ctrl.inQueueCount}'),
                           ),
                           const SizedBox(width: 12),
-                          Expanded(
+                          const Expanded(
                             child: _HeaderStat(
                                 icon: Icons.access_time_outlined,
                                 label: 'Tiempo prom.',
-                                value: '${ctrl.avgMinutes} min'),
+                                value: '8 min'),
                           ),
                         ],
                       ),
@@ -92,7 +111,7 @@ class InicioTab extends StatelessWidget {
                   child: Column(
                     children: [
                       const Text(
-                        'Atendiendo ahora',
+                        'Personas en atención',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
                       ),
                       const SizedBox(height: 16),
@@ -105,7 +124,7 @@ class InicioTab extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            '${ctrl.currentTurn}',
+                            '${ctrl.servingTickets.length}',
                             style: const TextStyle(
                                 fontSize: 36, fontWeight: FontWeight.bold, color: AppTheme.accentOrange),
                           ),
@@ -116,7 +135,10 @@ class InicioTab extends StatelessWidget {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: ctrl.nextTurn,
+                          onPressed: () {
+                            // Llamamos a la lógica de siguiente turno
+                            ctrl.nextTicket();
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.accentOrange,
                             elevation: 0,
@@ -146,11 +168,10 @@ class InicioTab extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () {
-                          // ── NAVEGACIÓN AGREGADA AQUÍ ──
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ColaEsperaView(),
+                              builder: (context) => const QueueManagementView(),
                             ),
                           );
                         },
@@ -164,120 +185,119 @@ class InicioTab extends StatelessWidget {
                 ),
               ),
 
-              // ── COLA DE ESPERA LISTA CORREGIDA ──
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                      (ctx, i) {
-                    final t = ctrl.queue[i];
-                    return Container(
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        // Sombras para que la tarjeta flote sobre el fondo azul
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
-                      ),
-                      // Usamos ClipRRect para que el borde izquierdo siga el borde redondeado de la tarjeta
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              // ── AQUÍ ESTÁ LA LÍNEA AZUL DEL DISEÑO ──
-                              left: BorderSide(color: Colors.blue.shade600, width: 4),
+              // ── COLA DE ESPERA LISTA ──
+              if (ctrl.isLoading && ctrl.waitingTickets.isEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                        (ctx, i) {
+                      final t = ctrl.waitingTickets[i];
+                      return Container(
+                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border(left: BorderSide(color: Colors.blue.shade600, width: 4)),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: Row(
-                              children: [
-                                Stack(
-                                  children: [
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.headerTeal.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '${t.number}',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppTheme.headerTeal,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 0,
-                                      right: 0,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.successGreen,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 1.5),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Stack(
                                     children: [
-                                      Text(
-                                        'Turno #${t.number}',
-                                        style: const TextStyle(
-                                            fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.access_time_outlined, size: 14, color: AppTheme.textSecondary),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${t.dateTime.hour}:${t.dateTime.minute.toString().padLeft(2, "0")} PM',
-                                            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.headerTeal.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '${t.position}',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.headerTeal,
+                                            ),
                                           ),
-                                        ],
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.successGreen,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 1.5),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.successGreen.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          t.client.fullName,
+                                          style: const TextStyle(
+                                              fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.access_time_outlined, size: 14, color: AppTheme.textSecondary),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${t.joinedAt.hour}:${t.joinedAt.minute.toString().padLeft(2, "0")}',
+                                              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  child: const Text(
-                                    'Esperando',
-                                    style: TextStyle(
-                                        fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.successGreen),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.successGreen.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Text(
+                                      'Esperando',
+                                      style: TextStyle(
+                                          fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.successGreen),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                  childCount: ctrl.queue.length,
+                      );
+                    },
+                    childCount: ctrl.waitingTickets.length,
+                  ),
                 ),
-              ),
 
               // ── ESTADÍSTICAS DE HOY ──
               const SliverToBoxAdapter(
@@ -289,25 +309,25 @@ class InicioTab extends StatelessWidget {
                   ),
                 ),
               ),
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 32),
                   child: Row(
                     children: [
                       Expanded(
                         child: _StatCard(
                           icon: Icons.bar_chart_rounded,
                           label: 'Atendidos',
-                          value: '${ctrl.attendedToday}',
+                          value: '24', // Dato Mock
                           iconColor: AppTheme.accentOrange,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: _StatCard(
                           icon: Icons.trending_up_rounded,
                           label: 'Satisfacción',
-                          value: '${(ctrl.satisfaction * 100).toInt()}%',
+                          value: '98%', // Dato Mock
                           iconColor: AppTheme.successGreen,
                         ),
                       ),

@@ -246,13 +246,19 @@ class _State extends State<ConfigTab> {
           ),
 
           // ── CERRAR SESIÓN ──
+          // ── CERRAR SESIÓN ──
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: OutlinedButton.icon(
                 onPressed: () {
                   AppControllers.auth.logout();
-                  Navigator.pushReplacementNamed(context, '/login');
+
+                  // Limpiamos la sesión de WebSockets y memoria del negocio
+                  AppControllers.business.clearConnectionsAndData();
+
+                  // Usamos pushNamedAndRemoveUntil para limpiar toda la pila de navegación
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                 },
                 icon: const Icon(Icons.logout, color: AppTheme.errorRed, size: 18),
                 label: const Text('Cerrar Sesión', style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold)),
