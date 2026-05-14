@@ -35,7 +35,7 @@ class _LoginViewState extends State<LoginView> {
     setState(() => _loading = false);
 
     if (ok) {
-      // ✅ El backend decide el rol
+
       if (AppControllers.auth.isService) {
         Navigator.pushReplacementNamed(context, '/business');
       } else {

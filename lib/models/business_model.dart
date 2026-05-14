@@ -19,11 +19,10 @@ class BusinessModel {
     this.isOpen = true,
   });
 
-  //FROM JSON (Backend → App)
   factory BusinessModel.fromJson(Map<String, dynamic> json){
     return BusinessModel(
-        id: json['id']?.toString() ?? '',
-        name: json['name'] ?? '',
+        id: json['serviceId']?.toString() ?? '',
+        name: json['serviceName'] ?? '',
         category: json['category'] ?? '',
         address: json['address'] ?? '',
         rating: json['rating'] ?? 0.0,
@@ -33,7 +32,6 @@ class BusinessModel {
     );
   }
 
-  // TO JSON (App → Backend)
   Map<String, dynamic> toJson(){
     return{
       'id' : id,

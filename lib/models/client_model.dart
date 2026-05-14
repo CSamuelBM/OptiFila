@@ -17,7 +17,7 @@ class ClientModel {
   //FROM JSON (Backend → App)
   factory ClientModel.fromJson(Map<String, dynamic> json){
     return ClientModel(
-        id: json['id']?.toString() ?? '',
+        id: json['clientId']?.toString() ?? '',
         firstName: json['firstName'] ?? '',
         lastName: json['lastName'] ?? '',
         secondLastName: json['secondLastName'] ?? '',

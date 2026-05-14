@@ -1,381 +1,259 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
+import '../../app_controllers.dart';
+import '../../models/service/ticket_queue_client.dart';
 
-class ColaEsperaView extends StatefulWidget {
-  const ColaEsperaView({super.key});
-
-  @override
-  State<ColaEsperaView> createState() => _ColaEsperaViewState();
-}
-
-class _ColaEsperaViewState extends State<ColaEsperaView> {
-  // Estado para el filtro seleccionado
-  String _filtroActivo = 'Todos';
-
-  // Datos simulados (Mocks) basados en tu diseño
-  final List<Map<String, dynamic>> _turnos = [
-    {
-      'numero': 38,
-      'nombre': 'Carlos Martínez',
-      'hora': '2:05 PM',
-      'estado': 'Atendiendo',
-      'tiempoEstimado': '5 min',
-      'isAtendiendo': true,
-    },
-    {
-      'numero': 39,
-      'nombre': 'María González',
-      'hora': '2:10 PM',
-      'estado': 'Esperando',
-      'tiempoEstimado': '10 min',
-      'isAtendiendo': false,
-    },
-    {
-      'numero': 40,
-      'nombre': 'Juan Pérez',
-      'hora': '2:15 PM',
-      'estado': 'Esperando',
-      'tiempoEstimado': '15 min',
-      'isAtendiendo': false,
-    },
-    {
-      'numero': 41,
-      'nombre': 'Ana Torres',
-      'hora': '2:20 PM',
-      'estado': 'Esperando',
-      'tiempoEstimado': '20 min',
-      'isAtendiendo': false,
-    },
-    {
-      'numero': 42,
-      'nombre': 'Luis Rodríguez',
-      'hora': '2:25 PM',
-      'estado': 'Esperando',
-      'tiempoEstimado': '25 min',
-      'isAtendiendo': false,
-    },
-  ];
+class QueueManagementView extends StatelessWidget {
+  const QueueManagementView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // ── AQUÍ ESTÁ LA MAGIA DEL FILTRO ──
-    // Filtramos la lista original basándonos en el filtro activo.
-    final turnosFiltrados = _filtroActivo == 'Todos'
-        ? _turnos
-        : _turnos.where((t) => t['estado'] == _filtroActivo).toList();
+    // Usamos la misma instancia del controlador para mantener la vista sincronizada
+    final ctrl = AppControllers.business;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFD6EAF8), // Fondo azul claro general
-      body: Column(
-        children: [
-          // ── ENCABEZADO ──
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.headerTeal.withOpacity(0.9), AppTheme.headerTeal],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 16,
-              right: 16,
-              bottom: 24,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Botón Volver
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Volver', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Cola de Espera',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Gestión completa de turnos',
-                  style: TextStyle(fontSize: 14, color: Colors.white70),
-                ),
-                const SizedBox(height: 24),
+      backgroundColor: const Color(0xFFF4F7F9),
+      appBar: AppBar(
+        title: const Text('Gestión de Fila', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: AppTheme.headerTeal,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: ListenableBuilder(
+        listenable: ctrl,
+        builder: (context, _) {
+          if (ctrl.isLoading && ctrl.activeQueue.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                // Tarjetas de Resumen
-                Row(
-                  children: [
-                    Expanded(child: _SummaryCard(icon: Icons.access_time, label: 'Esperando', count: '7', iconColor: Colors.blue)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _SummaryCard(icon: Icons.people_outline, label: 'Atendiendo', count: '1', iconColor: AppTheme.headerTeal)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _SummaryCard(icon: Icons.check_circle_outline, label: 'Completados', count: '0', iconColor: Colors.grey.shade600)),
-                  ],
-                )
+          return RefreshIndicator(
+            onRefresh: () => ctrl.loadDashboardData(),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // --- SERVING SECTION ---
+                if (ctrl.servingTickets.isNotEmpty) ...[
+                  const _SectionHeader(
+                      title: 'Atendiendo Ahora',
+                      icon: Icons.play_circle_fill,
+                      color: AppTheme.accentOrange
+                  ),
+                  ...ctrl.servingTickets.map((ticket) => _TicketListItem(
+                    ticket: ticket,
+                    isActive: true,
+                    onStatusUpdate: (clientId, action) {
+                      // Mapeamos la acción string al método del controlador
+                      if (action == 'missed') {
+                        ctrl.missedTicket(clientId);
+                      } else if (action == 'cancelled') {
+                        ctrl.cancelTicket(clientId);
+                      } else if (action == 'completed') {
+                        ctrl.completeTicket(clientId);
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Procesando solicitud...'))
+                      );
+                    },
+                  )),
+                  const SizedBox(height: 24),
+                ],
+
+                // --- WAITING SECTION ---
+                _SectionHeader(
+                    title: 'En Cola (${ctrl.waitingTickets.length})',
+                    icon: Icons.people_alt,
+                    color: AppTheme.headerTeal
+                ),
+                if (ctrl.waitingTickets.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: Text('No hay clientes en espera', style: TextStyle(color: Colors.grey))),
+                  )
+                else
+                  ...ctrl.waitingTickets.map((ticket) => _TicketListItem(
+                    ticket: ticket,
+                    isActive: false,
+                    onStatusUpdate: (clientId, action) {
+                      if (action == 'cancelled') {
+                        ctrl.cancelTicket(clientId);
+                      }
+                    },
+                  )),
               ],
             ),
-          ),
-
-          // ── FILTROS (CHIPS) ──
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  _FilterChip(label: 'Todos (11)', isSelected: _filtroActivo == 'Todos', onTap: () => setState(() => _filtroActivo = 'Todos')),
-                  _FilterChip(label: 'Esperando (7)', isSelected: _filtroActivo == 'Esperando', onTap: () => setState(() => _filtroActivo = 'Esperando')),
-                  _FilterChip(label: 'Atendiendo (1)', isSelected: _filtroActivo == 'Atendiendo', onTap: () => setState(() => _filtroActivo = 'Atendiendo')),
-                  _FilterChip(label: 'Completados ', isSelected: _filtroActivo == 'Completados', onTap: () => setState(() => _filtroActivo = 'Completados')),
-                ],
-              ),
-            ),
-          ),
-
-          // ── LISTA DE TURNOS ──
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(top: 0, bottom: 24),
-              // Usamos la lista ya filtrada
-              itemCount: turnosFiltrados.length,
-              itemBuilder: (context, index) {
-                final turno = turnosFiltrados[index];
-                return _TurnoCard(turno: turno);
-              },
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
-// ── WIDGETS AUXILIARES ──
+class _TicketListItem extends StatelessWidget {
+  final TicketQueueClient ticket;
+  final bool isActive;
+  final Function(String, String) onStatusUpdate;
 
-class _SummaryCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String count;
-  final Color iconColor;
-
-  const _SummaryCard({required this.icon, required this.label, required this.count, required this.iconColor});
+  const _TicketListItem({
+    required this.ticket,
+    required this.isActive,
+    required this.onStatusUpdate
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: iconColor),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            count,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue.shade600 : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.blue.shade600 : Colors.blue.shade200,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.blue.shade700,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TurnoCard extends StatelessWidget {
-  final Map<String, dynamic> turno;
-
-  const _TurnoCard({required this.turno});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isAtendiendo = turno['isAtendiendo'];
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        border: isActive ? Border.all(color: AppTheme.accentOrange.withOpacity(0.5), width: 2) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4)
           )
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(color: Colors.blue.shade600, width: 4),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
               children: [
-                // Fila Superior: Número, Nombre/Hora, Estado
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: AppTheme.bgGray,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${turno['numero']}',
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.headerTeal),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: AppTheme.successGreen,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
+                CircleAvatar(
+                  backgroundColor: isActive ? AppTheme.accentOrange : AppTheme.headerTeal.withOpacity(0.1),
+                  child: isActive
+                      ? const Icon(Icons.support_agent, color: Colors.white, size: 22)
+                      : Text(
+                    '${ticket.position}',
+                    style: const TextStyle(
+                        color: AppTheme.headerTeal,
+                        fontWeight: FontWeight.bold
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            turno['nombre'],
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time_outlined, size: 14, color: AppTheme.textSecondary),
-                              const SizedBox(width: 4),
-                              Text(
-                                turno['hora'],
-                                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                          color: isAtendiendo ? Colors.blue.shade50 : AppTheme.bgGray,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isAtendiendo ? Colors.blue.shade200 : Colors.transparent)
-                      ),
-                      child: Text(
-                        turno['estado'],
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isAtendiendo ? Colors.blue.shade700 : AppTheme.textSecondary
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-
-                const SizedBox(height: 16),
-
-                // Fila Inferior: Tiempo estimado
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Tiempo estimado',
-                      style: TextStyle(fontSize: 13, color: Colors.blue, fontWeight: FontWeight.w500),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade100),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ticket.client.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
-                      child: Text(
-                        turno['tiempoEstimado'],
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                      Text(
+                        'Llegada: ${ticket.joinedAt.hour}:${ticket.joinedAt.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
-                    ),
-                  ],
-                )
+                    ],
+                  ),
+                ),
+                if (!isActive)
+                  const Icon(Icons.drag_indicator, color: Colors.grey),
               ],
             ),
+
+            // Show action buttons ONLY if the ticket is being served
+            if (isActive) ...[
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _StatusActionButton(
+                    label: 'No asistió',
+                    color: Colors.orange,
+                    icon: Icons.person_off_outlined,
+                    // Se envía el ID del cliente en lugar del ticketId
+                    onPressed: () => onStatusUpdate(ticket.client.clientId, 'missed'),
+                  ),
+                  _StatusActionButton(
+                    label: 'Cancelar',
+                    color: Colors.redAccent,
+                    icon: Icons.cancel_outlined,
+                    // Se envía el ID del cliente en lugar del ticketId
+                    onPressed: () => onStatusUpdate(ticket.client.clientId, 'cancelled'),
+                  ),
+                  _StatusActionButton(
+                    label: 'Finalizar',
+                    color: AppTheme.successGreen,
+                    icon: Icons.check_circle_outline,
+                    // Se envía el ID del cliente en lugar del ticketId
+                    onPressed: () => onStatusUpdate(ticket.client.clientId, 'completed'),
+                  ),
+                ],
+              )
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+
+  const _SectionHeader({required this.title, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey[800]),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusActionButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _StatusActionButton({
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.onPressed
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 6),
+            Text(
+                label,
+                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)
+            ),
+          ],
         ),
       ),
     );

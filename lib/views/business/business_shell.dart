@@ -13,7 +13,6 @@ class BusinessShell extends StatefulWidget {
 class _State extends State<BusinessShell> {
   int _idx = 0;
 
-  // ── Solución: Se cambió 'static const' por 'final List<Widget>' ──
   final List<Widget> _tabs = [
     InicioTab(),
     ClientesTab(),

@@ -1,20 +1,36 @@
 import 'package:flutter/material.dart';
 import '../../app_theme.dart';
 import '../../app_controllers.dart';
-import '../../models/client_model.dart';
 
-class ClientesTab extends StatelessWidget {
+class ClientesTab extends StatefulWidget {
   const ClientesTab({super.key});
 
   @override
+  State<ClientesTab> createState() => _ClientesTabState();
+}
+
+class _ClientesTabState extends State<ClientesTab> {
+  String _searchQuery = '';
+
+  @override
   Widget build(BuildContext context) {
-    // Usamos el controlador real que pasaste
+    // Usamos el controlador real
     final ctrl = AppControllers.business;
 
     return ListenableBuilder(
       listenable: ctrl,
       builder: (ctx, _) {
-        final clients = ctrl.filteredClients;
+        // 1. Extraemos los clientes de la cola activa
+        final allClients = ctrl.activeQueue.map((t) => t.client).toSet().toList();
+
+        // 2. Filtramos localmente según lo que el usuario escriba en el TextField
+        final filteredClients = _searchQuery.isEmpty
+            ? allClients
+            : allClients.where((c) {
+          final fullName = '${c.fullName}'.toLowerCase();
+          final query = _searchQuery.toLowerCase();
+          return fullName.contains(query);
+        }).toList();
 
         return Container(
           color: const Color(0xFFD6EAF8),
@@ -43,7 +59,11 @@ class ClientesTab extends StatelessWidget {
                             style: TextStyle(fontSize: 14, color: Colors.white70)),
                         const SizedBox(height: 20),
                         TextField(
-                          onChanged: ctrl.searchClients,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
                           decoration: InputDecoration(
                             hintText: 'Buscar clientes...',
                             hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
@@ -65,12 +85,13 @@ class ClientesTab extends StatelessWidget {
                     right: 16,
                     child: Row(
                       children: [
-                        Expanded(child: _StatCard(value: ctrl.totalClients, label: 'Total')),
+                        Expanded(child: _StatCard(value: allClients.length, label: 'Total')),
                         const SizedBox(width: 12),
-                        // Nota: Estos campos deben existir en tu controller o ser calculados
-                        Expanded(child: _StatCard(value: ctrl.attendedToday, label: 'Atendidos')),
+                        // Dato mock temporal, igual que en InicioTab
+                        const Expanded(child: _StatCard(value: 24, label: 'Atendidos')),
                         const SizedBox(width: 12),
-                        Expanded(child: _StatCard(value: ctrl.inQueue, label: 'En Cola')),
+                        // Conectado al getter real del controller
+                        Expanded(child: _StatCard(value: ctrl.inQueueCount, label: 'En Cola')),
                       ],
                     ),
                   ),
@@ -82,7 +103,7 @@ class ClientesTab extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  '${clients.length} clientes registrados',
+                  '${filteredClients.length} clientes encontrados',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.headerTeal),
                 ),
               ),
@@ -90,10 +111,17 @@ class ClientesTab extends StatelessWidget {
               const SizedBox(height: 12),
 
               Expanded(
-                child: ListView.builder(
+                child: filteredClients.isEmpty
+                    ? const Center(
+                  child: Text(
+                    'No hay clientes para mostrar.',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                )
+                    : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                  itemCount: clients.length,
-                  itemBuilder: (ctx, i) => _ClientCard(client: clients[i]),
+                  itemCount: filteredClients.length,
+                  itemBuilder: (ctx, i) => _ClientCard(client: filteredClients[i]),
                 ),
               ),
             ],
@@ -134,14 +162,15 @@ class _StatCard extends StatelessWidget {
 }
 
 class _ClientCard extends StatelessWidget {
-  final ClientModel client;
+  // Usamos dynamic en lugar de ClientModel para aceptar el ClientSummary sin problemas de importación
+  final dynamic client;
 
   const _ClientCard({required this.client});
 
   @override
   Widget build(BuildContext context) {
-    // Adaptamos los nombres a tu ClientModel real
-    final String fullName = '${client.firstName} ${client.lastName} ${client.secondLastName}'.trim();
+    // Obtenemos directamente el fullName del ClientSummary
+    final String fullName = client.fullName ?? 'Cliente Desconocido';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -182,10 +211,7 @@ class _ClientCard extends StatelessWidget {
                           fullName,
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.headerTeal),
                         ),
-                        Text(
-                          client.email,
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                        ),
+                        // Omitimos el correo aquí porque ClientSummary suele no traerlo
                       ],
                     ),
                   ),
@@ -197,7 +223,7 @@ class _ClientCard extends StatelessWidget {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Cliente verificado', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold)),
+                  Text('En cola de espera', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.bold)),
                   Icon(Icons.check_circle, size: 16, color: Colors.green),
                 ],
               ),

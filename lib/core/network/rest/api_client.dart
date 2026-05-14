@@ -36,9 +36,20 @@ class ApiClient {
   Future<Map<String, dynamic>> get(
       String endpoint, {
         Map<String, String>? headers,
+        Map<String, dynamic>? queryParams, // <--- Modificado para aceptar cualquier mapa
       }) async {
+
+    Uri url = Uri.parse('$baseUrl$endpoint');
+
+    // Construir la URL con parámetros si existen
+    if (queryParams != null && queryParams.isNotEmpty) {
+      // Las URIs requieren que los valores del mapa sean String. Convertimos todo a String de forma segura.
+      final stringParams = queryParams.map((key, value) => MapEntry(key, value.toString()));
+      url = url.replace(queryParameters: stringParams);
+    }
+
     final response = await _client.get(
-      Uri.parse('$baseUrl$endpoint'),
+      url,
       headers: {
         'Content-Type': 'application/json',
         ...?headers,
@@ -78,6 +89,34 @@ class ApiClient {
       }) async {
     final request = http.Request(
       'DELETE',
+      Uri.parse('$baseUrl$endpoint'),
+    );
+
+    request.headers.addAll({
+      'Content-Type': 'application/json',
+      ...?headers,
+    });
+
+    if (body != null) {
+      request.body = jsonEncode(body);
+    }
+
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return _handleResponse(response);
+  }
+
+  /// =========================
+  /// PATCH
+  /// =========================
+  Future<Map<String, dynamic>> patch(
+      String endpoint, {
+        Map<String, dynamic>? body,
+        Map<String, String>? headers,
+      }) async {
+    final request = http.Request(
+      'PATCH',
       Uri.parse('$baseUrl$endpoint'),
     );
 

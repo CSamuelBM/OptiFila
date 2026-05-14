@@ -11,17 +11,15 @@ class UserModel {
     required this.email,
   });
 
-  //FROM JSON (Backend → App)
   factory UserModel.fromJson(Map<String, dynamic> json){
     return UserModel(
-        id: json['id']?.toString() ?? '',
+        id: json['serviceId']?.toString() ?? '',
         serviceName: json['serviceName'] ?? '',
-        categoryId: json['serviceCategory']?['categoryId']?.toString() ?? '',
+        categoryId: json['serviceCategory']?['serviceCategoryId']?.toString() ?? '',
         email: json['email']?.toString() ?? '',
     );
   }
 
-  // COPY WITH (Estado local)
   UserModel copyWith({String? serviceName, String? categoryId, String? email}) {
     return UserModel(
       id: id,

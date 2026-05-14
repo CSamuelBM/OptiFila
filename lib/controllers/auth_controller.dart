@@ -3,7 +3,7 @@ import '../core/di/injection_dart.dart';
 import '../models/client_model.dart';
 import '../models/login_result.dart';
 import '../models/user_model.dart';
-import '../repositories/auth_repository_impl.dart';
+import '../repositories/api_rest/auth_repository_impl.dart';
 import '../requests/client_request.dart';
 import '../requests/user_request.dart';
 
