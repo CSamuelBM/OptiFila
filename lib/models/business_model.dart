@@ -18,4 +18,30 @@ class BusinessModel {
     required this.waitMinutes,
     this.isOpen = true,
   });
+
+  factory BusinessModel.fromJson(Map<String, dynamic> json){
+    return BusinessModel(
+        id: json['serviceId']?.toString() ?? '',
+        name: json['serviceName'] ?? '',
+        category: json['category'] ?? '',
+        address: json['address'] ?? '',
+        rating: json['rating'] ?? 0.0,
+        queueCount: json['queue_count'],
+        waitMinutes: json['wait_minutes'],
+        isOpen: json['is_open'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson(){
+    return{
+      'id' : id,
+      'name' : name,
+      'category' : category,
+      'address' : address,
+      'rating' : rating,
+      'queue_count' : queueCount,
+      'wait_minutes' : waitMinutes,
+      'is_open' : isOpen,
+    };
+  }
 }

@@ -1,60 +1,290 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../models/turn_model.dart';
-import '../models/client_model.dart';
+import '../app_controllers.dart';
+import '../core/di/injection_dart.dart';
+import '../core/network/ws/stomp_service.dart';
+import '../models/service/ticket_queue_client.dart';
+import '../repositories/api_rest/business_repository_imp.dart';
 
-class BusinessController extends ChangeNotifier {
-  int    _currentTurn    = 38;
-  int    _inQueue        = 4;
-  int    _avgMinutes     = 8;
-  int    _attendedToday  = 24;
-  double _satisfaction   = 0.98;
-  String _clientSearch   = '';
+class BusinessController extends ChangeNotifier
+    with WidgetsBindingObserver {
+  final BusinessRepositoryImpl _repository = getIt<BusinessRepositoryImpl>();
+  final StompService _wsService = getIt<StompService>();
+  String? _currentBusinessId;
+  List<TicketQueueClient> _activeQueue = [];
+  bool _isLoading = false;
 
-  int    get currentTurn   => _currentTurn;
-  int    get inQueue        => _inQueue;
-  int    get avgMinutes     => _avgMinutes;
-  int    get attendedToday  => _attendedToday;
-  double get satisfaction   => _satisfaction;
+  List<TicketQueueClient> get activeQueue => _activeQueue;
 
-  List<TurnModel> _queue = [
-    TurnModel(id:'q1', number:39, businessName:'Mi Negocio', businessType:'Restaurante', address:'', dateTime: DateTime(2026,5,2,14,10), status: TurnStatus.active),
-    TurnModel(id:'q2', number:40, businessName:'Mi Negocio', businessType:'Restaurante', address:'', dateTime: DateTime(2026,5,2,14,15), status: TurnStatus.active),
-    TurnModel(id:'q3', number:41, businessName:'Mi Negocio', businessType:'Restaurante', address:'', dateTime: DateTime(2026,5,2,14,20), status: TurnStatus.active),
-    TurnModel(id:'q4', number:42, businessName:'Mi Negocio', businessType:'Restaurante', address:'', dateTime: DateTime(2026,5,2,14,25), status: TurnStatus.active),
-  ];
+  bool get isLoading => _isLoading;
 
-  final List<ClientModel> _clients = [
-    ClientModel(id:'c1', name:'María González',  email:'maria@email.com',  phone:'+1 234 567 8901', lastVisit: DateTime.now(),                             totalVisits:12, isInTurn:true),
-    ClientModel(id:'c2', name:'Carlos Rodríguez',email:'carlos@email.com', phone:'+1 234 567 8902', lastVisit: DateTime.now().subtract(const Duration(days:1)), totalVisits:8),
-    ClientModel(id:'c3', name:'Ana Martínez',    email:'ana@email.com',    phone:'+1 234 567 8903', lastVisit: DateTime.now().subtract(const Duration(days:3)), totalVisits:5),
-    ClientModel(id:'c4', name:'Luis García',     email:'luis@email.com',   phone:'+1 234 567 8904', lastVisit: DateTime.now().subtract(const Duration(days:7)), totalVisits:3),
-  ];
+  List<TicketQueueClient> get servingTickets => _activeQueue
+      .where(
+        (t) =>
+    t.status.toLowerCase() == 'serving' ||
+        t.status.toLowerCase() == 'in_progress',
+  )
+      .toList();
 
-  List<TurnModel>   get queue           => _queue;
-  List<ClientModel> get filteredClients {
-    if (_clientSearch.isEmpty) return _clients;
-    return _clients.where((c) =>
-      c.name.toLowerCase().contains(_clientSearch.toLowerCase()) ||
-      c.email.toLowerCase().contains(_clientSearch.toLowerCase())
-    ).toList();
+  List<TicketQueueClient> get waitingTickets =>
+      _activeQueue.where((t) => t.status.toLowerCase() == 'waiting').toList();
+
+  int get inQueueCount => waitingTickets.length;
+
+  String get currentTurnLabel => servingTickets.isNotEmpty
+      ? servingTickets.first.position.toString()
+      : '--';
+  BusinessController() {
+    WidgetsBinding.instance.addObserver(this);
   }
-  int get totalClients    => _clients.length;
-  int get todayClients    => _clients.where((c) => _isToday(c.lastVisit)).length;
-  int get weekClients     => 40;
+  // ─── CARGA INICIAL (REST) ───
+  Future<void> loadDashboardData() async {
+    final businessId = AppControllers.auth.service?.id ?? '';
+    _currentBusinessId = businessId;
+    if (businessId.isEmpty) return;
 
-  bool _isToday(DateTime d) {
-    final n = DateTime.now();
-    return d.year == n.year && d.month == n.month && d.day == n.day;
-  }
+    _isLoading = true;
+    notifyListeners();
 
-  void nextTurn() {
-    if (_queue.isNotEmpty) {
-      _currentTurn = _queue.first.number;
-      _queue = _queue.sublist(1);
-      _inQueue = _queue.length;
-      _attendedToday++;
+    try {
+      debugPrint('Loading queue data for business ID: $businessId');
+      _activeQueue = await _repository.getClientsInQueue(businessId);
+    } catch (e) {
+      debugPrint('Error loading queue: $e');
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
-  void searchClients(String q) { _clientSearch = q; notifyListeners(); }
+  @override
+  void didChangeAppLifecycleState(
+      AppLifecycleState state,
+      ) {
+
+    if (state == AppLifecycleState.resumed) {
+
+      debugPrint(
+        '🔄 Business app resumed -> reconectando WS',
+      );
+
+      if (!_wsService.isConnected &&
+          _currentBusinessId != null &&
+          _currentBusinessId!.isNotEmpty) {
+
+        _wsService.connect(
+          onConnected: () {
+
+            debugPrint(
+              '✅ Business WS reconectado',
+            );
+
+            initRealTimeUpdates();
+
+            loadDashboardData();
+          },
+        );
+      }
+    }
+
+    if (state == AppLifecycleState.paused) {
+
+      debugPrint(
+        '⏸️ Business app en background',
+      );
+    }
+  }
+
+  // ─── LÓGICA DE TIEMPO REAL (WS - MVP) ───
+
+  void initRealTimeUpdates() {
+
+    final businessId =
+        AppControllers.auth.service?.id ?? '';
+
+    _currentBusinessId = businessId;
+
+    if (businessId.isEmpty) return;
+
+    if (_wsService.isConnected) {
+
+      _subscribeToTopics(businessId);
+
+      return;
+    }
+
+    _wsService.connect(
+      onConnected: () {
+
+        _subscribeToTopics(businessId);
+      },
+    );
+  }
+
+  void _handleQueueUpdatedEvent(String rawJson) {
+    try {
+      final Map<String, dynamic> data = json.decode(rawJson);
+
+      if (data['type'] == 'QUEUE_UPDATED') {
+        debugPrint('WS: Cola actualizada globalmente. Sincronizando datos...');
+        loadDashboardData();
+      }
+    } catch (e) {
+      debugPrint('Error al procesar mensaje WS (QUEUE_UPDATED): $e');
+    }
+  }
+  void _subscribeToTopics(String businessId) {
+
+    // Actualizaciones globales
+    _wsService.subscribe(
+      '/topic/service/$businessId/update',
+          (message) {
+
+        if (message != null &&
+            message.isNotEmpty) {
+
+          _handleQueueUpdatedEvent(message);
+        }
+      },
+    );
+
+    // Nuevos tickets
+    _wsService.subscribe(
+      '/topic/service/$businessId',
+          (message) {
+
+        if (message != null &&
+            message.isNotEmpty) {
+
+          _handleNewClientJoinedEvent(message);
+        }
+      },
+    );
+
+    debugPrint(
+      '✅ Business subscriptions activas',
+    );
+  }
+
+  void _handleNewClientJoinedEvent(String rawJson) {
+    try {
+      final Map<String, dynamic> payload = json.decode(rawJson);
+
+      // Verificamos si es el evento correcto y si trae la data del ticket
+      if (payload['type'] == 'TICKET_CREATED' && payload.containsKey('data')) {
+        final ticketData = payload['data'];
+        final newTicket = TicketQueueClient.fromJson(ticketData);
+
+        // Validar si el ID viene vacío por error de parseo o diferencia con la BD
+        if (newTicket.ticketId.isEmpty) {
+          debugPrint('WS: El nuevo cliente llegó con ID vacío. Se fuerza recarga completa para asegurar datos consistentes.');
+          loadDashboardData();
+          return;
+        }
+
+        // Verificamos que no esté duplicado antes de agregarlo
+        final isDuplicate = _activeQueue.any((t) => t.ticketId == newTicket.ticketId);
+        debugPrint('WS: Nuevo cliente recibido: ${newTicket.client.fullName} (ID: ${newTicket.ticketId}). ¿Duplicado? $isDuplicate');
+
+        if (!isDuplicate) {
+          _activeQueue.add(newTicket);
+          debugPrint('WS: Nuevo cliente agregado localmente a la cola: ${newTicket.client.fullName}');
+          notifyListeners(); // Actualiza la UI de inmediato
+        }
+      } else {
+        // Si llega otro tipo de mensaje o no trae la info necesaria, sincronizamos
+        debugPrint('WS: Mensaje recibido no es TICKET_CREATED o falta data. Sincronizando datos...');
+        loadDashboardData();
+      }
+
+    } catch (e) {
+      debugPrint('Error al procesar nuevo cliente WS. Recargando datos de respaldo... Error: $e');
+      loadDashboardData();
+    }
+  }
+
+  // ─── ACCIONES ───
+  Future<void> completeTicket(String clientId) async {
+    final businessId = AppControllers.auth.service?.id ?? '';
+    try {
+      bool success = await _repository.markClientAsServed(businessId, clientId);
+      if (success) {
+        debugPrint('Cliente marcado como atendido: $clientId');
+        await loadDashboardData();
+      } else {
+        debugPrint('Error al marcar cliente como atendido: $clientId');
+      }
+    } catch (e) {
+      debugPrint('Error completing ticket: $e');
+    }
+  }
+
+  Future<void> cancelTicket(String clientId) async {
+    final businessId = AppControllers.auth.service?.id ?? '';
+    try {
+      bool success = await _repository.cancelClientQueue(businessId, clientId);
+      if (success) {
+        debugPrint('Cliente marcado como cancelado: $clientId');
+        await loadDashboardData();
+      } else {
+        debugPrint('Error al marcar cliente como cancelado: $clientId');
+      }
+    } catch (e) {
+      debugPrint('Error cancelling ticket: $e');
+    }
+  }
+
+  Future<void> nextTicket() async {
+    final businessId = AppControllers.auth.service?.id ?? '';
+    try {
+      bool success = await _repository.callNextClient(businessId);
+      if (success) {
+        debugPrint('Siguiente cliente llamado.');
+        await loadDashboardData();
+      } else {
+        debugPrint('Error al llamar al siguiente cliente');
+      }
+    } catch (e) {
+      debugPrint('Error calling ticket: $e');
+    }
+  }
+
+  Future<void> missedTicket(String clientId) async {
+    final businessId = AppControllers.auth.service?.id ?? '';
+    try {
+      bool success = await _repository.markClientAsNoShow(businessId, clientId);
+      if (success) {
+        debugPrint('Cliente marcado como perdido: $clientId');
+        await loadDashboardData();
+      } else {
+        debugPrint('Error al marcar cliente como perdido: $clientId');
+      }
+    } catch (e) {
+      debugPrint('Error completing ticket: $e');
+    }
+  }
+  /// Limpia las conexiones de red y resetea la memoria local sin destruir el controlador
+  void clearConnectionsAndData() {
+    // 1. Desconectamos totalmente el WebSocket
+    if (_wsService.isConnected) {
+      _wsService.disconnect();
+    }
+
+    // 2. Reiniciamos la lista de turnos y estado de carga
+    _activeQueue.clear();
+    _isLoading = false;
+
+    // 3. Notificamos a la UI para que vuelva a su estado por defecto
+    notifyListeners();
+
+    debugPrint('✅ Conexiones cerradas y memoria del BusinessController limpiada.');
+  }
+  @override
+  void dispose() {
+
+    WidgetsBinding.instance.removeObserver(this);
+
+    _wsService.disconnect();
+
+    super.dispose();
+  }
 }
